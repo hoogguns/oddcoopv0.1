@@ -28,7 +28,6 @@ function load() {
     return data;
   }
   const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-  // migrate: ensure tenants array exists on older data files
   if (!raw.tenants) raw.tenants = [];
   return raw;
 }
@@ -73,30 +72,44 @@ function createDb() {
   };
 
   function execRun(sql, params) {
+    // Named-param object (single object arg)
     if (params.length === 1 && params[0] && typeof params[0] === 'object' && !Array.isArray(params[0])) {
       return execRunNamed(sql, params[0]);
     }
 
-    if (/^INSERT INTO partners/i.test(sql)) {
+    // DELETE statements — used by seed --reset
+    if (/^DELETE FROM (\w+)/i.test(sql)) {
+      const table = sql.match(/^DELETE FROM (\w+)/i)[1].toLowerCase();
+      if (data[table]) { data[table] = []; persist(); }
+      return { changes: 0 };
+    }
+
+    if (/^INSERT (OR IGNORE )?INTO partners/i.test(sql)) {
       const [id, company_name, contact_name, email, password_hash, phone, website, api_key, plan] = params;
+      if (data.partners.find((p) => p.id === id)) return { changes: 0 };
       data.partners.push({ id, company_name, contact_name, email, password_hash, phone, website, api_key, plan: plan || 'pilot', active: 1, created_at: nowIso() });
       persist();
       return { changes: 1 };
     }
-    if (/^INSERT INTO drivers/i.test(sql)) { persist(); return { changes: 1 }; }
-    if (/^INSERT INTO orders \(/i.test(sql)) {
+    if (/^INSERT (OR IGNORE )?INTO drivers/i.test(sql)) {
+      persist();
+      return { changes: 1 };
+    }
+    if (/^INSERT (OR IGNORE )?INTO orders \(/i.test(sql)) {
       const [id, partner_id, external_ref, seller_name, seller_phone, seller_email, pickup_address, pickup_city, pickup_zip, pickup_lat, pickup_lng, device_brand, device_model, device_storage, device_color, device_condition, imei, serial_number, quoted_amount, currency, expected_specs, window_start, window_end] = params;
+      if (data.orders.find((o) => o.id === id)) return { changes: 0 };
       data.orders.push({ id, partner_id, driver_id: null, external_ref, status: 'pending', seller_name, seller_phone, seller_email, pickup_address, pickup_city, pickup_zip, pickup_lat, pickup_lng, device_brand, device_model, device_storage, device_color, device_condition, imei, serial_number, quoted_amount, currency: currency || 'USD', expected_specs, verified_specs: null, verification_notes: null, verification_match: null, window_start, window_end, packed: 0, packed_at: null, paid: 0, paid_at: null, payment_method: null, payment_ref: null, cancel_reason: null, created_at: nowIso(), updated_at: nowIso() });
       persist();
       return { changes: 1 };
     }
-    if (/^INSERT INTO order_events/i.test(sql)) {
+    if (/^INSERT (OR IGNORE )?INTO order_events/i.test(sql)) {
       const [id, order_id, actor_type, actor_id, event, detail] = params;
+      if (data.order_events.find((e) => e.id === id)) return { changes: 0 };
       data.order_events.push({ id, order_id, actor_type, actor_id, event, detail, created_at: nowIso() });
       persist();
       return { changes: 1 };
     }
-    if (/^INSERT INTO leads/i.test(sql)) {
+    if (/^INSERT (OR IGNORE )?INTO leads/i.test(sql)) {
       const [id, type, name, email, company, phone, message] = params;
       data.leads.push({ id, type, name, email, company, phone, message, created_at: nowIso() });
       persist();
@@ -143,20 +156,28 @@ function createDb() {
   }
 
   function execRunNamed(sql, obj) {
-    if (/INSERT INTO partners/i.test(sql)) {
-      data.partners.push({ ...obj, active: obj.active != null ? obj.active : 1, created_at: obj.created_at || nowIso() });
+    if (/INSERT (OR IGNORE )?INTO partners/i.test(sql)) {
+      if (data.partners.find((p) => p.id === obj.id)) return { changes: 0 };
+      data.partners.push({ active: 1, created_at: nowIso(), ...obj });
+      persist();
       return { changes: 1 };
     }
-    if (/INSERT INTO drivers/i.test(sql)) {
-      data.drivers.push({ ...obj, created_at: obj.created_at || nowIso() });
+    if (/INSERT (OR IGNORE )?INTO drivers/i.test(sql)) {
+      if (data.drivers.find((d) => d.id === obj.id)) return { changes: 0 };
+      data.drivers.push({ created_at: nowIso(), ...obj });
+      persist();  // <-- was missing, drivers were never written to disk
       return { changes: 1 };
     }
-    if (/INSERT INTO orders/i.test(sql)) {
+    if (/INSERT (OR IGNORE )?INTO orders/i.test(sql)) {
+      if (data.orders.find((o) => o.id === obj.id)) return { changes: 0 };
       data.orders.push({ packed: 0, paid: 0, paid_at: null, payment_method: null, payment_ref: null, verified_specs: null, verification_notes: null, verification_match: null, cancel_reason: null, serial_number: null, currency: 'USD', created_at: nowIso(), updated_at: nowIso(), ...obj });
+      persist();
       return { changes: 1 };
     }
-    if (/INSERT INTO order_events/i.test(sql)) {
-      data.order_events.push({ ...obj, created_at: obj.created_at || nowIso() });
+    if (/INSERT (OR IGNORE )?INTO order_events/i.test(sql)) {
+      if (data.order_events.find((e) => e.id === obj.id)) return { changes: 0 };
+      data.order_events.push({ created_at: nowIso(), ...obj });
+      persist();
       return { changes: 1 };
     }
     throw new Error('Unsupported named SQL: ' + sql.slice(0, 80));
@@ -169,13 +190,18 @@ function createDb() {
   }
 
   function execGet(sql, params) {
+    // COUNT queries
     if (/SELECT COUNT\(\*\) AS c FROM partners/i.test(sql)) return { c: data.partners.length };
+    if (/SELECT COUNT\(\*\) AS c FROM orders/i.test(sql))   return { c: data.orders.length };
+    if (/SELECT COUNT\(\*\) AS c FROM drivers/i.test(sql))  return { c: data.drivers.length };
+
+    // Partners
     if (/SELECT \* FROM partners WHERE email = \?/i.test(sql)) {
       const want = String(params[0] || '').toLowerCase();
       return data.partners.find((p) => String(p.email || '').toLowerCase() === want) || undefined;
     }
     if (/SELECT id FROM partners WHERE email = \?/i.test(sql)) {
-      const p = data.partners.find((x) => x.email === params[0]);
+      const p = data.partners.find((x) => String(x.email || '').toLowerCase() === String(params[0] || '').toLowerCase());
       return p ? { id: p.id } : undefined;
     }
     if (/SELECT id, company_name, contact_name, email, phone, website, plan, api_key, created_at\s+FROM partners WHERE id = \?/i.test(sql)) {
@@ -194,9 +220,16 @@ function createDb() {
       if (!p) return undefined;
       return { id: p.id, company_name: p.company_name, email: p.email, plan: p.plan, active: p.active };
     }
+
+    // Drivers
     if (/SELECT \* FROM drivers WHERE email = \?/i.test(sql)) {
       const want = String(params[0] || '').toLowerCase();
       return data.drivers.find((d) => String(d.email || '').toLowerCase() === want) || undefined;
+    }
+    if (/SELECT id FROM drivers WHERE email = \?/i.test(sql)) {
+      const want = String(params[0] || '').toLowerCase();
+      const d = data.drivers.find((x) => String(x.email || '').toLowerCase() === want);
+      return d ? { id: d.id } : undefined;
     }
     if (/SELECT id, name, email, phone, vehicle, zones, rating, status, driver_code, trained, created_at\s+FROM drivers WHERE id = \?/i.test(sql)) {
       const d = data.drivers.find((x) => x.id === params[0]);
@@ -204,6 +237,8 @@ function createDb() {
       const { id, name, email, phone, vehicle, zones, rating, status, driver_code, trained, created_at } = d;
       return { id, name, email, phone, vehicle, zones, rating, status, driver_code, trained, created_at };
     }
+
+    // Orders
     if (/FROM orders o[\s\S]*WHERE o\.id = \?/i.test(sql) || /WHERE o\.id = \?/i.test(sql)) {
       const o = data.orders.find((x) => x.id === params[0]);
       return o ? joinOrder(o) : undefined;
@@ -236,13 +271,13 @@ function createDb() {
   function filterOrdersCount(sql, params) {
     let rows = data.orders.slice();
     const hasPartner = /o\.partner_id = \?/.test(sql);
-    const hasDriver = /o\.driver_id = \?/.test(sql);
-    const hasStatus = /o\.status = \?/.test(sql);
-    const hasQ = /o\.seller_name LIKE \?/.test(sql);
+    const hasDriver  = /o\.driver_id = \?/.test(sql);
+    const hasStatus  = /o\.status = \?/.test(sql);
+    const hasQ       = /o\.seller_name LIKE \?/.test(sql);
     let i = 0;
     if (hasPartner) rows = rows.filter((o) => o.partner_id === params[i++]);
-    if (hasDriver) rows = rows.filter((o) => o.driver_id === params[i++]);
-    if (hasStatus) rows = rows.filter((o) => o.status === params[i++]);
+    if (hasDriver)  rows = rows.filter((o) => o.driver_id  === params[i++]);
+    if (hasStatus)  rows = rows.filter((o) => o.status     === params[i++]);
     if (hasQ) {
       const like = params[i];
       rows = rows.filter((o) => matchLike(o.seller_name, like) || matchLike(o.device_model, like) || matchLike(o.external_ref, like) || matchLike(o.pickup_city, like) || matchLike(o.imei, like));
@@ -262,23 +297,28 @@ function createDb() {
       return Object.values(map);
     }
     if (/FROM drivers WHERE trained = 1/i.test(sql)) {
-      return data.drivers.filter((d) => d.trained).sort((a, b) => (b.rating || 0) - (a.rating || 0)).map((d) => ({ id: d.id, name: d.name, phone: d.phone, vehicle: d.vehicle, zones: d.zones, rating: d.rating, status: d.status, driver_code: d.driver_code, trained: d.trained }));
+      return data.drivers
+        .filter((d) => d.trained)
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+        .map((d) => ({ id: d.id, name: d.name, phone: d.phone, vehicle: d.vehicle, zones: d.zones, rating: d.rating, status: d.status, driver_code: d.driver_code, trained: d.trained }));
     }
     if (/FROM order_events WHERE order_id = \?/i.test(sql)) {
-      return data.order_events.filter((e) => e.order_id === params[0]).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+      return data.order_events
+        .filter((e) => e.order_id === params[0])
+        .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
     }
     if (/FROM orders o/i.test(sql) && /ORDER BY o\.created_at DESC/i.test(sql)) {
       let rows = data.orders.map(joinOrder);
       const hasPartner = /o\.partner_id = \?/.test(sql);
-      const hasDriver = /o\.driver_id = \?/.test(sql);
-      const hasStatus = /o\.status = \?/.test(sql);
-      const hasQ = /o\.seller_name LIKE \?/.test(sql);
+      const hasDriver  = /o\.driver_id = \?/.test(sql);
+      const hasStatus  = /o\.status = \?/.test(sql);
+      const hasQ       = /o\.seller_name LIKE \?/.test(sql);
       let i = 0;
       if (hasPartner) rows = rows.filter((o) => o.partner_id === params[i++]);
-      if (hasDriver) rows = rows.filter((o) => o.driver_id === params[i++]);
-      if (hasStatus) rows = rows.filter((o) => o.status === params[i++]);
+      if (hasDriver)  rows = rows.filter((o) => o.driver_id  === params[i++]);
+      if (hasStatus)  rows = rows.filter((o) => o.status     === params[i++]);
       if (hasQ) { const like = params[i]; i += 5; rows = rows.filter((o) => matchLike(o.seller_name, like) || matchLike(o.device_model, like) || matchLike(o.external_ref, like) || matchLike(o.pickup_city, like) || matchLike(o.imei, like)); }
-      const limit = params[params.length - 2];
+      const limit  = params[params.length - 2];
       const offset = params[params.length - 1];
       rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
       return rows.slice(offset, offset + limit);
@@ -286,15 +326,15 @@ function createDb() {
     return [];
   }
 
-  api._reload = () => { data = load(); };
-  api._data = () => data;
-  api._replace = (next) => { data = next; persist(); };
+  api._reload   = () => { data = load(); };
+  api._data     = () => data;
+  api._replace  = (next) => { data = next; persist(); };
 
   return api;
 }
 
 let _db;
-function getDb() { if (!_db) _db = createDb(); return _db; }
+function getDb()  { if (!_db) _db = createDb(); return _db; }
 function openDb() { _db = createDb(); return _db; }
 
 module.exports = { getDb, openDb, DB_PATH, EMPTY, save, load, ensureDir };
