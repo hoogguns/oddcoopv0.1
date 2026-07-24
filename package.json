@@ -1,7 +1,7 @@
 {
-  "name": "purcheaper",
+  "name": "oddcoop",
   "version": "1.0.0",
-  "description": "Same-day device pickup logistics for online buyback stores — Wasatch Front (Ogden–Salt Lake City–Provo)",
+  "description": "Cooperative same-day device pickup logistics, compliance, and territory routing for buyback networks",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
@@ -12,18 +12,19 @@
     "launch-check": "node -e \"const http=require('http');http.get('http://127.0.0.1:'+(process.env.PORT||3847)+'/api/health',r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{console.log(d);process.exit(r.statusCode===200?0:1)})}).on('error',e=>{console.error(e);process.exit(1)})\""
   },
   "keywords": [
+    "cooperative",
     "logistics",
     "buyback",
     "same-day",
     "device-pickup",
-    "wasatch",
-    "salt-lake-city"
+    "territory",
+    "compliance"
   ],
   "author": "hoogguns",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hoogguns/purcheaper1.git"
+    "url": "https://github.com/hoogguns/oddcoop.git"
   },
   "engines": {
     "node": ">=18"
