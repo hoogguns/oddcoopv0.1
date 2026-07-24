@@ -5,14 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="{{COOP_COLOR}}" />
   <title>Driver portal — {{COOP_NAME}}</title>
-  <link rel="stylesheet" href="/css/site.css" />
+  <link rel="stylesheet" href="/css/site.css?v=2" />
 </head>
 <body class="app-body">
 
   <!-- LOGIN -->
   <div id="login-view" class="login-wrap">
     <div class="login-card">
-      <a class="brand" href="/"><span class="brand-mark">{{COOP_LOGO_LETTER}}</span> {{COOP_NAME}}</a>
+      <a class="brand" href="/">
+        <div class="brand-icon">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="{{COOP_COLOR}}"/>
+            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700">{{COOP_LOGO_LETTER}}</text>
+          </svg>
+        </div>
+        {{COOP_NAME}}
+      </a>
       <h1>Driver portal</h1>
       <p class="sub">Claim pickups, run device checks, mark deliveries complete.</p>
       <div id="login-alert" class="hidden"></div>
@@ -32,7 +40,15 @@
   <!-- APP -->
   <div id="app-view" class="app-shell hidden">
     <aside class="sidebar">
-      <a class="brand" href="/"><span class="brand-mark">{{COOP_LOGO_LETTER}}</span> {{COOP_NAME}}</a>
+      <a class="brand" href="/">
+        <div class="brand-icon">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="{{COOP_COLOR}}"/>
+            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700">{{COOP_LOGO_LETTER}}</text>
+          </svg>
+        </div>
+        {{COOP_NAME}}
+      </a>
       <nav class="side-nav">
         <a href="#" class="active" data-view="available">Available orders</a>
         <a href="#" data-view="active">My active orders</a>
@@ -60,8 +76,6 @@
       </header>
 
       <main class="app-content">
-
-        <!-- AVAILABLE ORDERS -->
         <section id="view-available">
           <div class="panel">
             <div class="panel-head"><h2>Open pickups near you</h2><span class="text-sm text-muted" id="avail-count">0 orders</span></div>
@@ -75,7 +89,6 @@
           </div>
         </section>
 
-        <!-- ACTIVE ORDERS -->
         <section id="view-active" class="hidden">
           <div class="two-col">
             <div class="panel">
@@ -95,45 +108,32 @@
           </div>
         </section>
 
-        <!-- VERIFICATION VIEW -->
         <section id="view-verify" class="hidden">
           <div class="panel" style="max-width:560px">
             <div class="panel-head"><h2>Device verification</h2><span class="chip chip-brand">On-site check</span></div>
             <div class="panel-body pad">
-              <p class="text-sm text-muted mb-1">Run through the checklist. All items must be confirmed before marking verified.</p>
               <div id="verify-order-info" style="margin-bottom:var(--space-4)"></div>
               <form id="verify-form" class="stack">
                 <div id="verify-alert" class="hidden"></div>
                 <div class="form-grid">
-                  <label class="field full">Verified brand &amp; model
-                    <input name="verified_brand_model" required placeholder="Apple iPhone 14 Pro" />
-                  </label>
-                  <label class="field">Verified storage
-                    <input name="verified_storage" required placeholder="256GB" />
-                  </label>
+                  <label class="field full">Verified brand &amp; model<input name="verified_brand_model" required placeholder="Apple iPhone 14 Pro" /></label>
+                  <label class="field">Verified storage<input name="verified_storage" required placeholder="256GB" /></label>
                   <label class="field">Verified condition
                     <select name="verified_condition" required>
                       <option>Excellent</option><option selected>Good</option><option>Fair</option><option>Poor</option>
                     </select>
                   </label>
-                  <label class="field full">IMEI (scan or type)
-                    <input name="imei" class="mono" placeholder="15 digits" />
+                  <label class="field full">IMEI<input name="imei" class="mono" placeholder="15 digits" /></label>
+                  <label class="field full" style="flex-direction:row;align-items:center;gap:.5rem">
+                    <input type="checkbox" name="powers_on" value="1" /> Powers on normally
                   </label>
                   <label class="field full" style="flex-direction:row;align-items:center;gap:.5rem">
-                    <input type="checkbox" name="powers_on" value="1" />
-                    Powers on normally
+                    <input type="checkbox" name="no_cracks" value="1" /> Screen has no cracks
                   </label>
                   <label class="field full" style="flex-direction:row;align-items:center;gap:.5rem">
-                    <input type="checkbox" name="no_cracks" value="1" />
-                    Screen has no cracks
+                    <input type="checkbox" name="not_locked" value="1" /> Not iCloud / Google / FRP locked
                   </label>
-                  <label class="field full" style="flex-direction:row;align-items:center;gap:.5rem">
-                    <input type="checkbox" name="not_locked" value="1" />
-                    Not iCloud / Google / FRP locked
-                  </label>
-                  <label class="field full">Verification notes
-                    <textarea name="notes" placeholder="Any discrepancies, damage notes, or observations…" style="min-height:70px;resize:vertical"></textarea>
-                  </label>
+                  <label class="field full">Notes<textarea name="notes" style="min-height:70px;resize:vertical"></textarea></label>
                 </div>
                 <div class="row" style="gap:var(--space-3)">
                   <button class="btn btn-primary" type="submit" name="action" value="match">Mark verified ✔</button>
@@ -144,7 +144,6 @@
           </div>
         </section>
 
-        <!-- HISTORY -->
         <section id="view-history" class="hidden">
           <div class="panel">
             <div class="panel-head"><h2>Completed orders</h2></div>
@@ -157,12 +156,11 @@
             </div>
           </div>
         </section>
-
       </main>
     </div>
   </div>
 
-  <script src="/js/api.js"></script>
-  <script src="/js/drivers.js"></script>
+  <script src="/js/api.js?v=2"></script>
+  <script src="/js/drivers.js?v=2"></script>
 </body>
 </html>
