@@ -21,8 +21,8 @@ router.post('/partner/register', (req, res) => {
   const id = uuid();
   const api_key = 'dl_live_' + uuid().replace(/-/g, '').slice(0, 24);
   db.prepare(
-    `INSERT INTO partners (id, company_name, contact_name, email, password_hash, phone, website, api_key, plan)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pilot')`
+    `INSERT INTO partners (id, company_name, contact_name, email, password_hash, phone, website, api_key, plan, active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pilot', 1)`
   ).run(
     id,
     company_name,
@@ -49,7 +49,10 @@ router.post('/partner/login', (req, res) => {
   if (!partner || !bcrypt.compareSync(password, partner.password_hash)) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  if (!partner.active) return res.status(403).json({ error: 'Account inactive' });
+  // active defaults NULL in seed — treat NULL/0 the same as active (no approval flow yet)
+  if (partner.active === 0) {
+    return res.status(403).json({ error: 'Account suspended — contact support' });
+  }
 
   const token = signToken({
     role: 'partner',
