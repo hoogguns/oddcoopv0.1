@@ -54,12 +54,13 @@ app.use('/api', publicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', orderRoutes);
 
-// Tenant-aware HTML serving — replaces {{COOP_*}} tokens
+// Tenant-aware HTML serving — replaces {{COOP_*}} tokens before sending
 function sendTenantHtml(file) {
   return (req, res) => {
     const filePath = path.join(publicDir, file);
     if (!fs.existsSync(filePath)) {
-      return res.status(404).sendFile(path.join(publicDir, '404.html'));
+      const nf = path.join(publicDir, '404.html');
+      return res.status(404).sendFile(fs.existsSync(nf) ? nf : filePath);
     }
     let html = fs.readFileSync(filePath, 'utf8');
     const t = req.tenant;
@@ -70,26 +71,35 @@ function sendTenantHtml(file) {
       .replace(/\{\{COOP_MARKET\}\}/g, t.market)
       .replace(/\{\{COOP_CORRIDOR\}\}/g, t.corridor)
       .replace(/\{\{COOP_LOGO_LETTER\}\}/g, t.logo_letter);
-    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   };
 }
 
-// Static assets (CSS, JS, images) — no token replacement needed
-app.use(express.static(publicDir, { maxAge: isProd ? '1h' : 0, etag: true }));
-
-// Named page routes
-app.get('/',           sendTenantHtml('index.html'));
-app.get('/login',      sendTenantHtml('login.html'));
-app.get('/dashboard',  sendTenantHtml('dashboard.html'));
+// Named page routes — MUST come before express.static
+// express.static with index:false ensures .html files are never served raw
+app.get('/',                  sendTenantHtml('index.html'));
+app.get('/login',             sendTenantHtml('login.html'));
+app.get('/dashboard',         sendTenantHtml('dashboard.html'));
 app.get('/dashboard/{*rest}', sendTenantHtml('dashboard.html'));
-app.get('/drivers',    sendTenantHtml('drivers.html'));
+app.get('/drivers',           sendTenantHtml('drivers.html'));
 app.get('/drivers/{*rest}',   sendTenantHtml('drivers.html'));
-app.get('/partners',   sendTenantHtml('partners.html'));
+app.get('/partners',          sendTenantHtml('partners.html'));
 app.get('/partners/{*rest}',  sendTenantHtml('partners.html'));
-app.get('/privacy',    sendTenantHtml('privacy.html'));
-app.get('/terms',      sendTenantHtml('terms.html'));
-app.get('/launch',     sendTenantHtml('launch.html'));
+app.get('/privacy',           sendTenantHtml('privacy.html'));
+app.get('/terms',             sendTenantHtml('terms.html'));
+app.get('/launch',            sendTenantHtml('launch.html'));
+app.get('/sell',              sendTenantHtml('sell.html'));
+
+// Static assets (CSS, JS, images) — index:false prevents raw HTML fallback
+app.use(
+  express.static(publicDir, {
+    maxAge: isProd ? '1h' : 0,
+    etag: true,
+    index: false,   // ← critical: never auto-serve index.html raw
+    extensions: [], // ← no .html extension fallback
+  })
+);
 
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'API route not found' });
