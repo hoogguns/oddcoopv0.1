@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="{{COOP_COLOR}}" />
+  <title>Sell your device — {{COOP_NAME}}</title>
+  <meta name="description" content="Get a same-day cash offer for your phone, tablet, or laptop. {{COOP_NAME}} picks up at your door and pays you the same day." />
+  <link rel="stylesheet" href="/css/site.css" />
+</head>
+<body>
+  <div class="announce-bar">
+    <strong>⚡ Same-day pickup &amp; payment</strong> — live in {{COOP_MARKET}}
+  </div>
+
+  <header class="topbar">
+    <div class="container">
+      <a class="brand" href="/">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="{{COOP_COLOR}}"/>
+            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700">{{COOP_LOGO_LETTER}}</text>
+          </svg>
+        </div>
+        {{COOP_NAME}}
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="/#how">How it Works</a>
+        <a href="/#coverage">Coverage</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <div class="nav-cta">
+        <a class="btn btn-ghost btn-sm" href="/login">Sign In</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" style="padding-bottom: var(--space-8)">
+      <div class="container" style="max-width:680px;margin:0 auto;text-align:center">
+        <span class="chip chip-brand" style="margin-bottom:var(--space-4);display:inline-flex">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Same-day offer
+        </span>
+        <h1 style="font-size:clamp(2rem,5vw,3rem)">Get paid today<br/>for your device.</h1>
+        <p class="lede" style="max-width:520px;margin:0 auto var(--space-6)">
+          Tell us what you have. We'll give you a quote, dispatch a driver to your door,
+          verify on the spot, and pay you — same day, {{COOP_MARKET}}.
+        </p>
+      </div>
+    </section>
+
+    <section style="padding:var(--space-8) 0 var(--space-12)">
+      <div class="container" style="max-width:600px;margin:0 auto">
+        <div class="card">
+          <h2 style="margin-bottom:var(--space-4)">What are you selling?</h2>
+          <div id="sell-alert" class="hidden" style="margin-bottom:var(--space-4)"></div>
+          <form id="sell-form" class="stack">
+            <div class="form-grid">
+              <label class="field full">Your name
+                <input name="seller_name" required placeholder="Jane Doe" />
+              </label>
+              <label class="field">Phone number
+                <input name="seller_phone" required placeholder="801-555-0000" />
+              </label>
+              <label class="field">Email
+                <input name="seller_email" type="email" placeholder="jane@example.com" />
+              </label>
+              <label class="field full">Pickup address
+                <input name="pickup_address" required placeholder="Street address" />
+              </label>
+              <label class="field">City
+                <input name="pickup_city" required list="sell-cities" placeholder="Salt Lake City" />
+                <datalist id="sell-cities">
+                  <option>Ogden</option><option>Layton</option><option>Bountiful</option>
+                  <option>Salt Lake City</option><option>West Valley City</option><option>Murray</option>
+                  <option>Sandy</option><option>Draper</option><option>Lehi</option>
+                  <option>Orem</option><option>Provo</option>
+                </datalist>
+              </label>
+              <label class="field">ZIP
+                <input name="pickup_zip" required placeholder="84101" />
+              </label>
+              <label class="field">Brand
+                <select name="device_brand" required>
+                  <option value="">Select…</option>
+                  <option>Apple</option>
+                  <option>Samsung</option>
+                  <option>Google</option>
+                  <option>OnePlus</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label class="field">Model
+                <input name="device_model" required placeholder="iPhone 14 Pro" />
+              </label>
+              <label class="field">Storage
+                <select name="device_storage">
+                  <option>64GB</option><option>128GB</option><option selected>256GB</option>
+                  <option>512GB</option><option>1TB</option>
+                </select>
+              </label>
+              <label class="field">Condition
+                <select name="device_condition" required>
+                  <option>Excellent</option>
+                  <option selected>Good</option>
+                  <option>Fair</option>
+                  <option>Poor</option>
+                </select>
+              </label>
+              <label class="field full">IMEI (optional — speeds up verify)
+                <input name="imei" class="mono" placeholder="15-digit IMEI" />
+              </label>
+            </div>
+
+            <div id="quote-result" class="hidden" style="background:var(--surface-alt);border-radius:var(--radius);padding:var(--space-4);text-align:center">
+              <p style="color:var(--muted);font-size:var(--text-sm)">Estimated quote</p>
+              <div id="quote-value" style="font-size:2rem;font-weight:700;color:var(--brand)"></div>
+              <p style="color:var(--muted);font-size:var(--text-xs);margin-top:var(--space-2)">Final amount confirmed on-site after device verification.</p>
+            </div>
+
+            <button class="btn btn-primary btn-block" type="submit" id="sell-btn">Get my quote →</button>
+          </form>
+          <p class="text-sm text-muted" style="text-align:center;margin-top:var(--space-4)">
+            Quotes are non-binding. You decide at the door.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div style="text-align:center;padding:var(--space-6) 0">
+        <a class="brand" href="/" style="justify-content:center">
+          <div class="brand-icon">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+              <rect width="32" height="32" rx="8" fill="{{COOP_COLOR}}"/>
+              <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700">{{COOP_LOGO_LETTER}}</text>
+            </svg>
+          </div>
+          {{COOP_NAME}}
+        </a>
+        <p style="color:var(--muted);font-size:var(--text-sm);margin-top:var(--space-2)">© <span id="y"></span> {{COOP_NAME}}. Powered by OddCoop.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/api.js"></script>
+  <script>
+    document.getElementById('y').textContent = new Date().getFullYear();
+
+    // Simple client-side quote estimator
+    const QUOTES = {
+      'Apple':   { 'iPhone 15': 520, 'iPhone 14 Pro': 430, 'iPhone 14': 320, 'iPhone 13': 250, 'iPhone 12': 180, 'iPad Air (5th gen)': 270 },
+      'Samsung': { 'Galaxy S24': 480, 'Galaxy S23': 310, 'Galaxy S22': 220 },
+      'Google':  { 'Pixel 8 Pro': 340, 'Pixel 8': 280, 'Pixel 7': 180 },
+    };
+    const CONDITION = { Excellent: 1.0, Good: 0.85, Fair: 0.65, Poor: 0.45 };
+
+    function estimateQuote(brand, model, condition) {
+      const base = QUOTES[brand]?.[model];
+      if (!base) return null;
+      return Math.round(base * (CONDITION[condition] || 0.85));
+    }
+
+    const form  = document.getElementById('sell-form');
+    const qRes  = document.getElementById('quote-result');
+    const qVal  = document.getElementById('quote-value');
+    const alert = document.getElementById('sell-alert');
+    const btn   = document.getElementById('sell-btn');
+
+    // Live quote preview as user types
+    ['device_brand','device_model','device_condition'].forEach((n) => {
+      form[n]?.addEventListener('change', () => {
+        const est = estimateQuote(form.device_brand.value, form.device_model.value, form.device_condition.value);
+        if (est) {
+          qVal.textContent = '$' + est;
+          qRes.classList.remove('hidden');
+          btn.textContent = 'Request pickup at $' + est + ' →';
+        } else {
+          qRes.classList.add('hidden');
+          btn.textContent = 'Get my quote →';
+        }
+      });
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      alert.className = 'hidden';
+
+      const fd = new FormData(form);
+      const body = Object.fromEntries(fd.entries());
+      body.type = 'sell_request';
+      body.message = `Device: ${body.device_brand} ${body.device_model} ${body.device_storage} (${body.device_condition})`
+        + (body.imei ? ` IMEI: ${body.imei}` : '');
+
+      try {
+        await API.lead(body);
+        alert.textContent = '✅ Request received! We\'ll call you within 30 minutes to confirm pickup.';
+        alert.className = 'alert alert-good';
+        form.reset();
+        qRes.classList.add('hidden');
+        btn.textContent = 'Get my quote →';
+      } catch (err) {
+        alert.textContent = err.message || 'Something went wrong. Try again.';
+        alert.className = 'alert alert-bad';
+        btn.textContent = 'Get my quote →';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

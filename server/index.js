@@ -7,31 +7,29 @@ const morgan = require('morgan');
 const { getDb } = require('./db');
 const requireTenant = require('./middleware/requireTenant');
 
-// ensure DB + schema; auto-seed empty store for launch demos
 try {
   getDb();
   const count = getDb().prepare('SELECT COUNT(*) AS c FROM partners').get().c;
   if (count === 0) {
     console.log('  Empty database — running seed…');
     require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'seed.js')], {
-      stdio: 'inherit',
-      env: process.env,
+      stdio: 'inherit', env: process.env,
     });
   }
 } catch (err) {
   console.warn('  Seed check skipped:', err.message);
 }
 
-const authRoutes = require('./routes/auth');
-const orderRoutes = require('./routes/orders');
+const authRoutes   = require('./routes/auth');
+const orderRoutes  = require('./routes/orders');
 const publicRoutes = require('./routes/public');
+const coopRoutes   = require('./routes/coop');
 
 const app = express();
 const PORT = process.env.PORT || 3847;
 const publicDir = path.join(__dirname, '..', 'public');
 const isProd = process.env.NODE_ENV === 'production';
 
-// Security headers
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -45,41 +43,40 @@ const corsOrigin = process.env.CORS_ORIGIN;
 app.use(cors(corsOrigin ? { origin: corsOrigin.split(',').map((s) => s.trim()) } : undefined));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(isProd ? 'combined' : 'dev'));
-
-// Attach tenant to every request
 app.use(requireTenant);
 
-// API routes
-app.use('/api', publicRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api', orderRoutes);
+// API
+app.use('/api/coop',  coopRoutes);
+app.use('/api',       publicRoutes);
+app.use('/api/auth',  authRoutes);
+app.use('/api',       orderRoutes);
 
-// Tenant-aware HTML serving — replaces {{COOP_*}} tokens before sending
+// Tenant-aware HTML — tokens replaced server-side before send
 function sendTenantHtml(file) {
   return (req, res) => {
     const filePath = path.join(publicDir, file);
     if (!fs.existsSync(filePath)) {
       const nf = path.join(publicDir, '404.html');
-      return res.status(404).sendFile(fs.existsSync(nf) ? nf : filePath);
+      return res.status(404).type('html').send(fs.existsSync(nf) ? fs.readFileSync(nf,'utf8') : 'Not found');
     }
     let html = fs.readFileSync(filePath, 'utf8');
     const t = req.tenant;
     html = html
-      .replace(/\{\{COOP_NAME\}\}/g, t.name)
-      .replace(/\{\{COOP_SLUG\}\}/g, t.slug)
-      .replace(/\{\{COOP_COLOR\}\}/g, t.color)
-      .replace(/\{\{COOP_MARKET\}\}/g, t.market)
-      .replace(/\{\{COOP_CORRIDOR\}\}/g, t.corridor)
+      .replace(/\{\{COOP_NAME\}\}/g,        t.name)
+      .replace(/\{\{COOP_SLUG\}\}/g,        t.slug)
+      .replace(/\{\{COOP_COLOR\}\}/g,       t.color)
+      .replace(/\{\{COOP_MARKET\}\}/g,      t.market)
+      .replace(/\{\{COOP_CORRIDOR\}\}/g,    t.corridor)
       .replace(/\{\{COOP_LOGO_LETTER\}\}/g, t.logo_letter);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   };
 }
 
-// Named page routes — MUST come before express.static
-// express.static with index:false ensures .html files are never served raw
+// Named page routes — BEFORE express.static
 app.get('/',                  sendTenantHtml('index.html'));
 app.get('/login',             sendTenantHtml('login.html'));
+app.get('/sell',              sendTenantHtml('sell.html'));
 app.get('/dashboard',         sendTenantHtml('dashboard.html'));
 app.get('/dashboard/{*rest}', sendTenantHtml('dashboard.html'));
 app.get('/drivers',           sendTenantHtml('drivers.html'));
@@ -89,17 +86,9 @@ app.get('/partners/{*rest}',  sendTenantHtml('partners.html'));
 app.get('/privacy',           sendTenantHtml('privacy.html'));
 app.get('/terms',             sendTenantHtml('terms.html'));
 app.get('/launch',            sendTenantHtml('launch.html'));
-app.get('/sell',              sendTenantHtml('sell.html'));
 
-// Static assets (CSS, JS, images) — index:false prevents raw HTML fallback
-app.use(
-  express.static(publicDir, {
-    maxAge: isProd ? '1h' : 0,
-    etag: true,
-    index: false,   // ← critical: never auto-serve index.html raw
-    extensions: [], // ← no .html extension fallback
-  })
-);
+// Static assets (CSS/JS/images) — AFTER page routes, index:false prevents raw HTML
+app.use(express.static(publicDir, { maxAge: isProd ? '1h' : 0, etag: true, index: false, extensions: [] }));
 
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'API route not found' });
@@ -107,8 +96,8 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res) => {
-  const notFound = path.join(publicDir, '404.html');
-  if (fs.existsSync(notFound)) res.status(404).sendFile(notFound);
+  const nf = path.join(publicDir, '404.html');
+  if (fs.existsSync(nf)) res.status(404).sendFile(nf);
   else res.status(404).type('text').send('Not found');
 });
 
@@ -121,10 +110,12 @@ app.listen(PORT, () => {
   console.log('');
   console.log('  OddCoop — cooperative same-day device pickup logistics');
   console.log('  Multi-tenant: [slug].oddcoop.com per coop');
-  console.log(`  Mode:   ${process.env.NODE_ENV || 'development'}`);
-  console.log(`  Local:  http://localhost:${PORT}`);
-  console.log(`  Login:  http://localhost:${PORT}/login`);
-  console.log(`  Dash:   http://localhost:${PORT}/dashboard`);
-  console.log(`  Tip:    Set X-Coop-Slug: wasatchbuybacks header to test your coop`);
+  console.log(`  Mode:    ${process.env.NODE_ENV || 'development'}`);
+  console.log(`  Local:   http://localhost:${PORT}`);
+  console.log(`  Login:   http://localhost:${PORT}/login`);
+  console.log(`  Dash:    http://localhost:${PORT}/dashboard`);
+  console.log(`  Sell:    http://localhost:${PORT}/sell`);
+  console.log(`  API:     http://localhost:${PORT}/api/health`);
+  console.log(`  Tip:     Set X-Coop-Slug: wasatchbuybacks to test your coop`);
   console.log('');
 });

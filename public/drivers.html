@@ -3,132 +3,161 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a1220" />
-  <title>PurCheaper Driver Portal — Buyback pickups</title>
+  <meta name="theme-color" content="{{COOP_COLOR}}" />
+  <title>Driver portal — {{COOP_NAME}}</title>
   <link rel="stylesheet" href="/css/site.css" />
 </head>
 <body class="app-body">
+
+  <!-- LOGIN -->
   <div id="login-view" class="login-wrap">
     <div class="login-card">
-      <a class="brand" href="/"><span class="brand-mark">P</span> PurCheaper</a>
+      <a class="brand" href="/"><span class="brand-mark">{{COOP_LOGO_LETTER}}</span> {{COOP_NAME}}</a>
       <h1>Driver portal</h1>
-      <p class="sub">Claim buyback pickups, verify specs, pack devices. Training required.</p>
+      <p class="sub">Claim pickups, run device checks, mark deliveries complete.</p>
       <div id="login-alert" class="hidden"></div>
       <form id="login-form" class="stack">
         <label class="field">Email
-          <input name="email" type="email" required value="sam.driver@purcheaper.demo" />
+          <input name="email" type="email" required placeholder="sam.driver@oddcoop.demo" />
         </label>
         <label class="field">Password
-          <input name="password" type="password" required value="driver1234" />
+          <input name="password" type="password" required placeholder="driver1234" />
         </label>
         <button class="btn btn-primary btn-block" type="submit">Sign in</button>
       </form>
-      <p class="text-sm text-muted mt-1">Demo: sam.driver@purcheaper.demo / driver1234 · <a href="/">Home</a></p>
+      <p class="text-sm text-muted mt-1"><a href="/">Marketing site</a> · <a href="/partners">Partner info</a></p>
     </div>
   </div>
 
+  <!-- APP -->
   <div id="app-view" class="app-shell hidden">
     <aside class="sidebar">
-      <a class="brand" href="/"><span class="brand-mark">P</span> PurCheaper</a>
+      <a class="brand" href="/"><span class="brand-mark">{{COOP_LOGO_LETTER}}</span> {{COOP_NAME}}</a>
       <nav class="side-nav">
-        <a href="#" class="active" data-tab="mine">My jobs</a>
-        <a href="#" data-tab="open">Open board</a>
-        <a href="#" data-tab="train">Training SOP</a>
-        <a href="/">Marketing</a>
+        <a href="#" class="active" data-view="available">Available orders</a>
+        <a href="#" data-view="active">My active orders</a>
+        <a href="#" data-view="verify">Verification</a>
+        <a href="#" data-view="history">History</a>
         <button type="button" class="linkish" id="btn-logout">Sign out</button>
       </nav>
       <div class="side-meta">
-        <strong id="d-name">—</strong>
-        <span id="d-meta"></span>
+        <strong id="side-name">—</strong><br/>
+        <span class="text-sm" id="side-zone"></span><br/>
+        <span class="chip" id="side-status" style="margin-top:4px">offline</span>
       </div>
     </aside>
 
     <div class="app-main">
       <header class="app-top">
         <div>
-          <h1>Buyback pickups</h1>
-          <p class="text-sm text-muted">Verify against partner specs · pack · unlock same-day pay</p>
+          <h1 id="view-title">Available pickups</h1>
+          <p class="text-sm text-muted">{{COOP_MARKET}} · Claim an order to get started</p>
         </div>
-        <button class="btn btn-ghost btn-sm" id="btn-refresh" type="button">Refresh</button>
+        <div class="row">
+          <button class="btn btn-soft btn-sm" id="btn-go-available" type="button">Set available</button>
+          <button class="btn btn-ghost btn-sm" id="btn-refresh" type="button">Refresh</button>
+        </div>
       </header>
 
       <main class="app-content">
-        <section id="tab-mine" class="two-col">
-          <div class="panel">
-            <div class="panel-head"><h2>Assigned to you</h2><span class="text-sm text-muted" id="mine-count">0</span></div>
-            <div class="panel-body" style="overflow:auto;max-height:560px">
-              <table class="app">
-                <thead>
-                  <tr>
-                    <th>Device</th>
-                    <th>Pickup</th>
-                    <th>Pay</th>
-                    <th>Status</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="mine-body"></tbody>
-              </table>
-              <div id="mine-empty" class="empty hidden">No active jobs. Claim from the open board.</div>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-head"><h2>Job workspace</h2><span id="job-status"></span></div>
-            <div class="panel-body pad" id="job-body">
-              <p class="text-sm text-muted">Select a job to update status or run verification.</p>
-            </div>
-          </div>
-        </section>
 
-        <section id="tab-open" class="hidden">
+        <!-- AVAILABLE ORDERS -->
+        <section id="view-available">
           <div class="panel">
-            <div class="panel-head"><h2>Open buyback orders</h2><span class="chip chip-brand">Wasatch corridor</span></div>
+            <div class="panel-head"><h2>Open pickups near you</h2><span class="text-sm text-muted" id="avail-count">0 orders</span></div>
             <div class="panel-body" style="overflow:auto">
               <table class="app">
-                <thead>
-                  <tr>
-                    <th>Device</th>
-                    <th>City</th>
-                    <th>Window</th>
-                    <th>Amount</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="open-body"></tbody>
+                <thead><tr><th>Ref</th><th>Device</th><th>City</th><th>Quote</th><th>Window</th><th></th></tr></thead>
+                <tbody id="avail-body"></tbody>
               </table>
-              <div id="open-empty" class="empty hidden">No open orders right now.</div>
+              <div id="avail-empty" class="empty hidden">No open orders right now. Check back soon.</div>
             </div>
           </div>
         </section>
 
-        <section id="tab-train" class="hidden">
-          <div class="grid-2">
-            <article class="card">
-              <h3>Buyback training checklist</h3>
-              <ol class="list-tight">
-                <li>Confirm seller ID matches order contact.</li>
-                <li>Power on device; note battery if critical.</li>
-                <li>Check model, storage, color vs. app specs.</li>
-                <li>Confirm no iCloud / FRP / carrier lock when required.</li>
-                <li>Assess condition vs. quoted grade (cracks, ports, cameras).</li>
-                <li>Photograph device + IMEI screen if present.</li>
-                <li>Factory notes only — never factory reset unless partner SOP says so.</li>
-                <li>Pack in provided kit: wrap, seal, label with order ref.</li>
-                <li>Submit verification: match unlocks same-day pay for partner.</li>
-                <li>Mismatch: still pack safely, document differences, do not promise pay.</li>
-              </ol>
-            </article>
-            <article class="card">
-              <h3>Dispatch &amp; zones</h3>
-              <p>After training, you receive PurCheaper buyback jobs in your zone. This portal is the system of record for verification and packing.</p>
-              <ul class="list-tight mt-1">
-                <li>Only trained accounts can complete verify.</li>
-                <li>Zones: north (Ogden), central (SLC), south (Provo).</li>
-                <li>Never release payment yourself — partner does after match.</li>
-              </ul>
-            </article>
+        <!-- ACTIVE ORDERS -->
+        <section id="view-active" class="hidden">
+          <div class="two-col">
+            <div class="panel">
+              <div class="panel-head"><h2>Your active orders</h2><span class="text-sm text-muted" id="active-count">0</span></div>
+              <div class="panel-body" style="overflow:auto">
+                <table class="app">
+                  <thead><tr><th>Ref</th><th>Seller</th><th>Device</th><th>Status</th><th></th></tr></thead>
+                  <tbody id="active-body"></tbody>
+                </table>
+                <div id="active-empty" class="empty hidden">No active orders.</div>
+              </div>
+            </div>
+            <div class="panel" id="active-detail">
+              <div class="panel-head"><h2>Order detail</h2></div>
+              <div class="panel-body pad"><p class="text-sm text-muted">Select an order.</p></div>
+            </div>
           </div>
         </section>
+
+        <!-- VERIFICATION VIEW -->
+        <section id="view-verify" class="hidden">
+          <div class="panel" style="max-width:560px">
+            <div class="panel-head"><h2>Device verification</h2><span class="chip chip-brand">On-site check</span></div>
+            <div class="panel-body pad">
+              <p class="text-sm text-muted mb-1">Run through the checklist. All items must be confirmed before marking verified.</p>
+              <div id="verify-order-info" style="margin-bottom:var(--space-4)"></div>
+              <form id="verify-form" class="stack">
+                <div id="verify-alert" class="hidden"></div>
+                <div class="form-grid">
+                  <label class="field full">Verified brand &amp; model
+                    <input name="verified_brand_model" required placeholder="Apple iPhone 14 Pro" />
+                  </label>
+                  <label class="field">Verified storage
+                    <input name="verified_storage" required placeholder="256GB" />
+                  </label>
+                  <label class="field">Verified condition
+                    <select name="verified_condition" required>
+                      <option>Excellent</option><option selected>Good</option><option>Fair</option><option>Poor</option>
+                    </select>
+                  </label>
+                  <label class="field full">IMEI (scan or type)
+                    <input name="imei" class="mono" placeholder="15 digits" />
+                  </label>
+                  <label class="field full" style="flex-direction:row;align-items:center;gap:.5rem">
+                    <input type="checkbox" name="powers_on" value="1" />
+                    Powers on normally
+                  </label>
+                  <label class="field full" style="flex-direction:row;align-items:center;gap:.5rem">
+                    <input type="checkbox" name="no_cracks" value="1" />
+                    Screen has no cracks
+                  </label>
+                  <label class="field full" style="flex-direction:row;align-items:center;gap:.5rem">
+                    <input type="checkbox" name="not_locked" value="1" />
+                    Not iCloud / Google / FRP locked
+                  </label>
+                  <label class="field full">Verification notes
+                    <textarea name="notes" placeholder="Any discrepancies, damage notes, or observations…" style="min-height:70px;resize:vertical"></textarea>
+                  </label>
+                </div>
+                <div class="row" style="gap:var(--space-3)">
+                  <button class="btn btn-primary" type="submit" name="action" value="match">Mark verified ✔</button>
+                  <button class="btn btn-warning" type="submit" name="action" value="mismatch">Flag mismatch ⚠</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- HISTORY -->
+        <section id="view-history" class="hidden">
+          <div class="panel">
+            <div class="panel-head"><h2>Completed orders</h2></div>
+            <div class="panel-body" style="overflow:auto">
+              <table class="app">
+                <thead><tr><th>Ref</th><th>Device</th><th>City</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody id="history-body"></tbody>
+              </table>
+              <div id="history-empty" class="empty hidden">No completed orders yet.</div>
+            </div>
+          </div>
+        </section>
+
       </main>
     </div>
   </div>

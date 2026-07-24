@@ -1,112 +1,67 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { getDb } = require('../db');
-const { marketplaceStats } = require('../services/orders');
-const { PLANS, COGS, cogsPerPickup } = require('../config/pricing');
 
 const router = express.Router();
 
-const COVERAGE = {
-  market: 'Salt Lake City metro — Wasatch Front',
-  state: 'Utah',
-  corridor: 'Ogden → Salt Lake City → Provo',
-  cities: [
-    { name: 'Ogden', zone: 'north' },
-    { name: 'Layton', zone: 'north' },
-    { name: 'Bountiful', zone: 'north' },
-    { name: 'Salt Lake City', zone: 'central' },
-    { name: 'West Valley City', zone: 'central' },
-    { name: 'Murray', zone: 'central' },
-    { name: 'Sandy', zone: 'central' },
-    { name: 'Draper', zone: 'south' },
-    { name: 'Lehi', zone: 'south' },
-    { name: 'Orem', zone: 'south' },
-    { name: 'Provo', zone: 'south' },
-  ],
-  hours: '7 days / week, typically 8am–8pm MT',
-  promise: 'Same-day pickup and payment eligibility after on-site verification',
-};
+// Health check
+router.get('/health', (req, res) => {
+  try {
+    const db = getDb();
+    const stats = db.prepare(
+      `SELECT
+        (SELECT COUNT(*) FROM orders)  AS orders,
+        (SELECT COUNT(*) FROM partners WHERE active != 0) AS partners,
+        (SELECT COUNT(*) FROM drivers  WHERE trained = 1) AS drivers`
+    ).get();
+    res.json({ ok: true, ...stats, tenant: req.tenant ? req.tenant.slug : 'default' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
-router.get('/health', (_req, res) => {
+// Stats for homepage hero
+router.get('/stats', (req, res) => {
+  try {
+    const db = getDb();
+    const row = db.prepare(
+      `SELECT
+        (SELECT COUNT(*) FROM orders) AS orders,
+        (SELECT COUNT(*) FROM partners WHERE active != 0) AS active_partner_accounts,
+        (SELECT COUNT(*) FROM drivers  WHERE trained = 1) AS trained_drivers,
+        (SELECT COALESCE(SUM(quoted_amount),0) FROM orders WHERE paid = 1) AS paid_volume`
+    ).get();
+    res.json(row);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Coverage — returns tenant cities for homepage map / footer
+router.get('/coverage', (req, res) => {
+  const t = req.tenant;
+  const cities = (t.cities || []).map((name) => ({ name }));
   res.json({
-    ok: true,
-    service: 'purcheaper',
-    market: COVERAGE.market,
-    version: '1.1.0',
-    env: process.env.NODE_ENV || 'development',
+    market: t.market,
+    corridor: t.corridor,
+    cities,
   });
 });
 
-/** Public pricing sheet (no auth) — pure SaaS */
-router.get('/pricing', (_req, res) => {
-  res.json({
-    market: COVERAGE.market,
-    currency: 'USD',
-    model: 'saas_subscription',
-    plans: Object.values(PLANS).filter((p) => p.id !== 'pilot'),
-    notes: [
-      'Subscription SaaS for buyback operators — not a courier marketplace fee.',
-      'Partners own drivers, liability, and door-grading checklists.',
-      'Included order volume per plan; soft overage only if you exceed the cap.',
-      'Tracking numbers, dual status (partner + driver), API, payment-gate tools included.',
-    ],
-    platform_cogs_note: 'PurCheaper COGS is hosting/support — not per-package labor.',
-    platform_cogs: COGS,
-  });
-});
-
-router.get('/coverage', (_req, res) => {
-  res.json(COVERAGE);
-});
-
-router.get('/stats', (_req, res) => {
-  // public marketing stats (aggregated, non-sensitive)
-  const s = marketplaceStats();
-  res.json({
-    market: COVERAGE.market,
-    demo_orders_tracked: s.orders,
-    active_partner_accounts: s.partners,
-    trained_drivers: s.drivers,
-    paid_volume_demo: s.paid_volume,
-    paid_today_demo: s.paid_today_count,
-  });
-});
-
-router.get('/how-it-works', (_req, res) => {
-  res.json({
-    title: 'How PurCheaper works',
-    audiences: {
-      sellers: [
-        { step: 1, title: 'Sell online', body: 'Get a quote from your preferred online buyback store.' },
-        { step: 2, title: 'Book pickup', body: 'Choose PurCheaper same-day pickup for the Wasatch Front.' },
-        { step: 3, title: 'Hand off at home', body: 'A trained gig driver arrives at your door.' },
-        { step: 4, title: 'Get paid same day', body: 'After the device matches the quote specs, payment releases the same day.' },
-      ],
-      partners: [
-        { step: 1, title: 'Connect your buyback flow', body: 'Create pickup orders via dashboard or API when a seller accepts a quote.' },
-        { step: 2, title: 'Your drivers claim the job', body: 'You staff drivers (gig or W-2). They use PurCheaper for status + your checklist.' },
-        { step: 3, title: 'Door grade on your rules', body: 'Partner-owned checklists grade the device; you own liability and outcomes.' },
-        { step: 4, title: 'Track + pay + ship', body: 'Push carrier tracking, dual status updates, same-day pay gate when verified.' },
-      ],
-    },
-  });
-});
-
-router.post('/leads', (req, res) => {
+// Lead capture (contact form)
+router.post('/lead', (req, res) => {
   const { type, name, email, company, phone, message } = req.body || {};
-  if (!type || !name || !email) {
-    return res.status(400).json({ error: 'type, name, and email are required' });
+  if (!name || !email) return res.status(400).json({ error: 'name and email required' });
+  try {
+    const db = getDb();
+    db.prepare(
+      `INSERT INTO leads (id, type, name, email, company, phone, message)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(uuid(), type || 'general', name, email, company || null, phone || null, message || null);
+    res.json({ ok: true, message: "Got it — we'll be in touch today." });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
-  if (!['partner', 'seller', 'driver', 'general'].includes(type)) {
-    return res.status(400).json({ error: 'type must be partner, seller, driver, or general' });
-  }
-  const db = getDb();
-  const id = uuid();
-  db.prepare(
-    `INSERT INTO leads (id, type, name, email, company, phone, message)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, type, name, email, company || null, phone || null, message || null);
-  res.status(201).json({ ok: true, id, message: 'Thanks — we will be in touch shortly.' });
 });
 
 module.exports = router;

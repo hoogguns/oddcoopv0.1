@@ -1,162 +1,85 @@
-/* Shared API client */
-const API = {
-  base: '',
+/* OddCoop frontend API client
+ * All fetch calls go through here so auth headers and base URL are consistent.
+ * Token is stored in sessionStorage so it clears on tab close.
+ */
 
-  tokenKey(role) {
-    return role === 'driver' ? 'PurCheaper_driver_token' : 'PurCheaper_partner_token';
-  },
-  userKey(role) {
-    return role === 'driver' ? 'PurCheaper_driver_user' : 'PurCheaper_partner_user';
-  },
+const API = (() => {
+  const BASE = '';
 
-  getToken(role = 'partner') {
-    return localStorage.getItem(this.tokenKey(role));
-  },
-  setSession(role, token, user) {
-    localStorage.setItem(this.tokenKey(role), token);
-    localStorage.setItem(this.userKey(role), JSON.stringify(user));
-  },
-  clearSession(role) {
-    localStorage.removeItem(this.tokenKey(role));
-    localStorage.removeItem(this.userKey(role));
-  },
-  getUser(role = 'partner') {
-    try {
-      return JSON.parse(localStorage.getItem(this.userKey(role)) || 'null');
-    } catch {
-      return null;
-    }
-  },
+  function getToken() { return sessionStorage.getItem('oc_token'); }
+  function setToken(t) { sessionStorage.setItem('oc_token', t); }
+  function clearToken() { sessionStorage.removeItem('oc_token'); }
 
-  async request(path, { method = 'GET', body, role = 'partner', auth = true, apiKey } = {}) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (auth) {
-      const token = this.getToken(role);
-      if (token) headers.Authorization = `Bearer ${token}`;
-    }
-    if (apiKey) headers['X-API-Key'] = apiKey;
+  function headers(extra = {}) {
+    const h = { 'Content-Type': 'application/json', ...extra };
+    const t = getToken();
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    return h;
+  }
 
-    const res = await fetch(this.base + path, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    let data = null;
-    const text = await res.text();
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      data = { error: text || 'Unexpected response' };
-    }
-
-    if (!res.ok) {
-      const err = new Error((data && data.error) || res.statusText || 'Request failed');
-      err.status = res.status;
-      err.data = data;
-      throw err;
-    }
+  async function request(method, path, body) {
+    const opts = { method, headers: headers() };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const res = await fetch(BASE + path, opts);
+    let data;
+    try { data = await res.json(); } catch { data = {}; }
+    if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), { status: res.status, data });
     return data;
-  },
+  }
 
-  // public
-  health: () => API.request('/api/health', { auth: false }),
-  coverage: () => API.request('/api/coverage', { auth: false }),
-  stats: () => API.request('/api/stats', { auth: false }),
-  howItWorks: () => API.request('/api/how-it-works', { auth: false }),
-  lead: (body) => API.request('/api/leads', { method: 'POST', body, auth: false }),
+  const get  = (p)    => request('GET',    p);
+  const post = (p, b) => request('POST',   p, b);
+  const put  = (p, b) => request('PUT',    p, b);
+  const del  = (p)    => request('DELETE', p);
 
-  // auth
-  partnerLogin: (email, password) =>
-    API.request('/api/auth/partner/login', { method: 'POST', body: { email, password }, auth: false }),
-  partnerRegister: (body) =>
-    API.request('/api/auth/partner/register', { method: 'POST', body, auth: false }),
-  driverLogin: (email, password) =>
-    API.request('/api/auth/driver/login', { method: 'POST', body: { email, password }, auth: false }),
+  return {
+    // Auth
+    loginPartner: (email, password) =>
+      post('/api/auth/partner/login', { email, password }).then((d) => { setToken(d.token); return d; }),
+    loginDriver: (email, password) =>
+      post('/api/auth/driver/login', { email, password }).then((d) => { setToken(d.token); return d; }),
+    logout: () => clearToken(),
+    me: () => get('/api/auth/partner/me'),
+    meDriver: () => get('/api/auth/driver/me'),
+    isLoggedIn: () => !!getToken(),
 
-  // partner
-  partnerStats: () => API.request('/api/partner/stats'),
-  partnerOrders: (params = {}) => {
-    const q = new URLSearchParams(params).toString();
-    return API.request('/api/partner/orders' + (q ? `?${q}` : ''));
-  },
-  partnerOrder: (id) => API.request(`/api/partner/orders/${id}`),
-  createOrder: (body) => API.request('/api/partner/orders', { method: 'POST', body }),
-  payOrder: (id, body = {}) => API.request(`/api/partner/orders/${id}/pay`, { method: 'POST', body }),
-  cancelOrder: (id, reason) =>
-    API.request(`/api/partner/orders/${id}/cancel`, { method: 'POST', body: { reason } }),
-  assignOrder: (id, driver_id) =>
-    API.request(`/api/partner/orders/${id}/assign`, { method: 'POST', body: { driver_id } }),
-  partnerStatus: (id, status, notes) =>
-    API.request(`/api/partner/orders/${id}/status`, { method: 'POST', body: { status, notes } }),
-  partnerTracking: (id, body) =>
-    API.request(`/api/partner/orders/${id}/tracking`, { method: 'POST', body }),
-  partnerChecklists: () => API.request('/api/partner/checklists'),
-  partnerDrivers: () => API.request('/api/partner/drivers'),
-  partnerEconomics: () => API.request('/api/partner/economics'),
-  partnerStatuses: () => API.request('/api/partner/statuses'),
-  partnerIntegrations: () => API.request('/api/partner/integrations'),
-  connectIntegration: (provider, body) =>
-    API.request(`/api/partner/integrations/${provider}/connect`, { method: 'POST', body }),
-  dispatchOrder: (id, body = {}) =>
-    API.request(`/api/partner/orders/${id}/dispatch`, { method: 'POST', body }),
-  publicPricing: () => API.request('/api/pricing', { auth: false }),
+    // Coop / tenant
+    coop: ()     => get('/api/coop'),
+    coverage: () => get('/api/coverage'),
+    stats: ()    => get('/api/stats'),
+    health: ()   => get('/api/health'),
+    lead: (body) => post('/api/lead', body),
 
-  // driver
-  driverOrders: () => API.request('/api/driver/orders', { role: 'driver' }),
-  claimOrder: (id, start_route = true) =>
-    API.request(`/api/driver/orders/${id}/claim`, {
-      method: 'POST',
-      body: { start_route },
-      role: 'driver',
-    }),
-  driverStatus: (id, status, notes) =>
-    API.request(`/api/driver/orders/${id}/status`, {
-      method: 'POST',
-      body: { status, notes },
-      role: 'driver',
-    }),
-  driverTracking: (id, body) =>
-    API.request(`/api/driver/orders/${id}/tracking`, { method: 'POST', body, role: 'driver' }),
-  verifyOrder: (id, body) =>
-    API.request(`/api/driver/orders/${id}/verify`, { method: 'POST', body, role: 'driver' }),
-  driverOrder: (id) => API.request(`/api/driver/orders/${id}`, { role: 'driver' }),
-};
+    // Orders
+    orders: (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return get('/api/orders' + (qs ? '?' + qs : ''));
+    },
+    order:        (id)   => get('/api/orders/' + id),
+    createOrder:  (body) => post('/api/orders', body),
+    assignDriver: (id, driver_id) => put('/api/orders/' + id + '/assign', { driver_id }),
+    updateStatus: (id, status, extra = {}) => put('/api/orders/' + id + '/status', { status, ...extra }),
+    verify:       (id, body) => put('/api/orders/' + id + '/verify', body),
+    releasePayment: (id, body) => put('/api/orders/' + id + '/pay', body),
+    cancelOrder:  (id, reason) => put('/api/orders/' + id + '/cancel', { reason }),
 
-function money(n) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(
-    Number(n) || 0
-  );
-}
+    // Drivers
+    drivers:     () => get('/api/drivers'),
+    driverOrders: (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return get('/api/driver/orders' + (qs ? '?' + qs : ''));
+    },
+    claimOrder:  (id) => put('/api/driver/orders/' + id + '/claim', {}),
+    driverStatus: (status) => put('/api/driver/status', { status }),
 
-function statusChip(status) {
-  const map = {
-    pending: 'chip-warn',
-    assigned: 'chip-info',
-    en_route: 'chip-info',
-    picked_up: 'chip-brand',
-    verifying: 'chip-brand',
-    verified: 'chip-good',
-    paid: 'chip-good',
-    mismatch: 'chip-bad',
-    cancelled: '',
+    // Partner stats
+    partnerStats: () => get('/api/partner/stats'),
+    partnerMonthly: () => get('/api/partner/monthly'),
+
+    getToken,
+    setToken,
+    clearToken,
   };
-  const label = String(status || '').replace(/_/g, ' ');
-  return `<span class="chip ${map[status] || ''}">${label}</span>`;
-}
+})();
 
-function fmtWhen(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-window.API = API;
-window.money = money;
-window.statusChip = statusChip;
-window.fmtWhen = fmtWhen;
+if (typeof module !== 'undefined') module.exports = API;
