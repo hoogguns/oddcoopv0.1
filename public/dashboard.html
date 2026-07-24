@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0a1220" />
-  <title>PurCheaper Partner Dashboard</title>
+  <title>{{COOP_NAME}} Partner Dashboard</title>
   <link rel="stylesheet" href="/css/site.css" />
 </head>
 <body class="app-body">
   <!-- LOGIN -->
   <div id="login-view" class="login-wrap">
     <div class="login-card">
-      <a class="brand" href="/"><span class="brand-mark">P</span> PurCheaper</a>
+      <a class="brand" href="/"><span class="brand-mark">{{COOP_LOGO_LETTER}}</span> {{COOP_NAME}}</a>
       <h1>Partner dashboard</h1>
       <p class="sub">Track purchased devices, dispatch pickups, release same-day pay.</p>
       <div id="login-alert" class="hidden"></div>
@@ -31,7 +31,7 @@
   <!-- APP -->
   <div id="app-view" class="app-shell hidden">
     <aside class="sidebar">
-      <a class="brand" href="/"><span class="brand-mark">P</span> PurCheaper</a>
+      <a class="brand" href="/"><span class="brand-mark">{{COOP_LOGO_LETTER}}</span> {{COOP_NAME}}</a>
       <nav class="side-nav">
         <a href="#" class="active" data-view="orders">Orders</a>
         <a href="#" data-view="create">New pickup</a>
@@ -54,7 +54,7 @@
       <header class="app-top">
         <div>
           <h1 id="view-title">Purchased devices</h1>
-          <p class="text-sm text-muted">Wasatch Front · same-day payment when verified</p>
+          <p class="text-sm text-muted">{{COOP_MARKET}} · same-day payment when verified</p>
         </div>
         <div class="row">
           <button class="btn btn-primary btn-sm" id="btn-new-pickup" type="button">+ New pickup</button>
@@ -71,42 +71,6 @@
           <div class="stat"><div class="label">Avg cycle</div><div class="value" id="s-cycle">—</div><div class="sub">Hours to done</div></div>
         </div>
 
-        <!-- Live money this month (partner spend + PurCheaper contribution) -->
-        <div class="panel" id="profit-panel">
-          <div class="panel-head">
-            <h2>This month · money</h2>
-            <span class="text-sm text-muted" id="profit-period">—</span>
-          </div>
-          <div class="panel-body pad">
-            <div class="stat-row" style="grid-template-columns:repeat(2,1fr);margin:0">
-              <div class="stat" style="box-shadow:none">
-                <div class="label">Your SaaS bill</div>
-                <div class="value" id="m-invoice">—</div>
-                <div class="sub" id="m-invoice-sub">Subscription + overage</div>
-              </div>
-              <div class="stat" style="box-shadow:none">
-                <div class="label">PurCheaper margin (est.)</div>
-                <div class="value" id="m-profit">—</div>
-                <div class="sub" id="m-profit-sub">SaaS revenue − platform COGS</div>
-              </div>
-              <div class="stat" style="box-shadow:none">
-                <div class="label">Orders on platform</div>
-                <div class="value" id="m-pickups">—</div>
-                <div class="sub" id="m-pickups-sub">This month</div>
-              </div>
-              <div class="stat" style="box-shadow:none">
-                <div class="label">SaaS margin %</div>
-                <div class="value" id="m-unit">—</div>
-                <div class="sub" id="m-unit-sub">After platform COGS</div>
-              </div>
-            </div>
-            <p class="text-sm text-muted mt-1" id="m-note">
-              Pure SaaS + platform connectors (Roadie, Shipt, fleet). You own liability and checklists; labor is via integrations you connect.
-              <a href="#economics">Open calculator</a>
-            </p>
-          </div>
-        </div>
-
         <!-- ORDERS VIEW -->
         <section id="view-orders" class="two-col">
           <div class="stack" style="gap:.55rem;min-width:0">
@@ -114,50 +78,26 @@
               <input class="grow" id="q" placeholder="Search seller, model, ref, city, IMEI…" />
               <select id="status-filter">
                 <option value="">All statuses</option>
-                <option>pending</option>
-                <option>assigned</option>
-                <option>en_route</option>
-                <option>picked_up</option>
-                <option>verifying</option>
-                <option>verified</option>
-                <option>paid</option>
-                <option>mismatch</option>
-                <option>cancelled</option>
+                <option>pending</option><option>assigned</option><option>en_route</option>
+                <option>picked_up</option><option>verifying</option><option>verified</option>
+                <option>paid</option><option>mismatch</option><option>cancelled</option>
               </select>
               <button class="btn btn-soft btn-sm" id="btn-filter" type="button">Filter</button>
             </div>
             <div class="panel">
-              <div class="panel-head">
-                <h2>Order pipeline</h2>
-                <span class="text-sm text-muted" id="order-count">0 orders</span>
-              </div>
+              <div class="panel-head"><h2>Order pipeline</h2><span class="text-sm text-muted" id="order-count">0 orders</span></div>
               <div class="panel-body" style="overflow:auto;max-height:520px">
                 <table class="app">
-                  <thead>
-                    <tr>
-                      <th>Ref / Device</th>
-                      <th>Seller · City</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                      <th>Driver</th>
-                      <th></th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Ref / Device</th><th>Seller · City</th><th>Amount</th><th>Status</th><th>Driver</th><th></th></tr></thead>
                   <tbody id="orders-body"></tbody>
                 </table>
                 <div id="orders-empty" class="empty hidden">No orders match.</div>
               </div>
             </div>
           </div>
-
           <div class="panel" id="detail-panel">
-            <div class="panel-head">
-              <h2>Order detail</h2>
-              <span id="detail-status"></span>
-            </div>
-            <div class="panel-body pad" id="detail-body">
-              <p class="text-sm text-muted">Select an order to inspect specs, events, and payment actions.</p>
-            </div>
+            <div class="panel-head"><h2>Order detail</h2><span id="detail-status"></span></div>
+            <div class="panel-body pad" id="detail-body"><p class="text-sm text-muted">Select an order to inspect specs, events, and payment actions.</p></div>
           </div>
         </section>
 
@@ -169,53 +109,20 @@
               <form id="create-form" class="stack">
                 <div id="create-alert" class="hidden"></div>
                 <div class="form-grid">
-                  <label class="field">External ref
-                    <input name="external_ref" placeholder="WDB-10501" />
-                  </label>
-                  <label class="field">Quoted amount ($)
-                    <input name="quoted_amount" type="number" min="1" step="1" required placeholder="350" />
-                  </label>
-                  <label class="field">Seller name
-                    <input name="seller_name" required />
-                  </label>
-                  <label class="field">Seller phone
-                    <input name="seller_phone" required placeholder="801-555-0000" />
-                  </label>
-                  <label class="field full">Seller email
-                    <input name="seller_email" type="email" />
-                  </label>
-                  <label class="field full">Pickup address
-                    <input name="pickup_address" required placeholder="Street address" />
-                  </label>
-                  <label class="field">City
-                    <input name="pickup_city" required list="cities" placeholder="Salt Lake City" />
-                  </label>
-                  <label class="field">ZIP
-                    <input name="pickup_zip" required placeholder="84101" />
-                  </label>
-                  <label class="field">Brand
-                    <input name="device_brand" required placeholder="Apple" />
-                  </label>
-                  <label class="field">Model
-                    <input name="device_model" required placeholder="iPhone 14" />
-                  </label>
-                  <label class="field">Storage
-                    <input name="device_storage" placeholder="128GB" />
-                  </label>
-                  <label class="field">Color
-                    <input name="device_color" />
-                  </label>
-                  <label class="field">Condition
-                    <select name="device_condition" required>
-                      <option>Excellent</option>
-                      <option selected>Good</option>
-                      <option>Fair</option>
-                      <option>Poor</option>
-                    </select>
-                  </label>
-                  <label class="field">IMEI
-                    <input name="imei" class="mono" />
-                  </label>
+                  <label class="field">External ref<input name="external_ref" placeholder="WDB-10501" /></label>
+                  <label class="field">Quoted amount ($)<input name="quoted_amount" type="number" min="1" step="1" required placeholder="350" /></label>
+                  <label class="field">Seller name<input name="seller_name" required /></label>
+                  <label class="field">Seller phone<input name="seller_phone" required placeholder="801-555-0000" /></label>
+                  <label class="field full">Seller email<input name="seller_email" type="email" /></label>
+                  <label class="field full">Pickup address<input name="pickup_address" required placeholder="Street address" /></label>
+                  <label class="field">City<input name="pickup_city" required list="cities" placeholder="Salt Lake City" /></label>
+                  <label class="field">ZIP<input name="pickup_zip" required placeholder="84101" /></label>
+                  <label class="field">Brand<input name="device_brand" required placeholder="Apple" /></label>
+                  <label class="field">Model<input name="device_model" required placeholder="iPhone 14" /></label>
+                  <label class="field">Storage<input name="device_storage" placeholder="128GB" /></label>
+                  <label class="field">Color<input name="device_color" /></label>
+                  <label class="field">Condition<select name="device_condition" required><option>Excellent</option><option selected>Good</option><option>Fair</option><option>Poor</option></select></label>
+                  <label class="field">IMEI<input name="imei" class="mono" /></label>
                 </div>
                 <button class="btn btn-primary" type="submit">Create order</button>
               </form>
@@ -232,175 +139,12 @@
         <!-- DRIVERS VIEW -->
         <section id="view-drivers" class="hidden">
           <div class="panel">
-            <div class="panel-head">
-              <h2>Trained drivers</h2>
-              <span class="text-sm text-muted">PurCheaper buyback trained</span>
-            </div>
+            <div class="panel-head"><h2>Trained drivers</h2><span class="text-sm text-muted">{{COOP_NAME}} buyback trained</span></div>
             <div class="panel-body" style="overflow:auto">
               <table class="app">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Zones</th>
-                    <th>Vehicle</th>
-                    <th>Driver ID</th>
-                    <th>Rating</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Name</th><th>Zones</th><th>Vehicle</th><th>Driver ID</th><th>Rating</th><th>Status</th></tr></thead>
                 <tbody id="drivers-body"></tbody>
               </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ECONOMICS VIEW -->
-        <section id="view-economics" class="hidden">
-          <div class="stack" style="gap:0.75rem">
-            <div class="panel">
-              <div class="panel-head">
-                <h2>Live month snapshot</h2>
-                <button type="button" class="btn btn-ghost btn-sm" id="btn-econ-refresh">Refresh live</button>
-              </div>
-              <div class="panel-body pad">
-                <div class="stat-row" style="grid-template-columns:repeat(2,1fr)">
-                  <div class="stat"><div class="label">Partner invoice</div><div class="value" id="e-live-invoice">—</div><div class="sub" id="e-live-invoice-sub">—</div></div>
-                  <div class="stat"><div class="label">PurCheaper contribution</div><div class="value" id="e-live-profit">—</div><div class="sub" id="e-live-profit-sub">—</div></div>
-                </div>
-                <table class="app mt-1" style="min-width:0">
-                  <tbody id="e-live-breakdown"></tbody>
-                </table>
-              </div>
-            </div>
-            <div class="panel">
-              <div class="panel-head">
-                <h2>Unit-economics calculator</h2>
-                <a class="btn btn-ghost btn-sm" href="/partners#pricing">Full pricing sheet</a>
-              </div>
-              <div class="panel-body pad">
-                <p class="text-sm text-muted mb-1">
-                  Model PurCheaper cost vs conversion lift from offering same-day pay. Illustrative pilot rates — not a binding quote.
-                </p>
-                <form id="econ-form" class="stack">
-                  <div class="form-grid">
-                    <label class="field">Plan
-                      <select name="plan" id="econ-plan">
-                        <option value="starter">Starter — $99/mo · 200 orders</option>
-                        <option value="growth" selected>Growth — $249/mo · 1,500 orders</option>
-                        <option value="network">Network — $699/mo · 10,000 orders</option>
-                      </select>
-                    </label>
-                    <label class="field">Orders on platform / month
-                      <input name="pickups" id="econ-pickups" type="number" min="0" step="1" value="400" />
-                    </label>
-                    <label class="field">% of pickups using same-day pay
-                      <input name="same_day_pct" id="econ-same-day" type="number" min="0" max="100" step="1" value="85" />
-                    </label>
-                    <label class="field">Avg device quote ($)
-                      <input name="avg_quote" id="econ-quote" type="number" min="1" step="1" value="280" />
-                    </label>
-                    <label class="field">Your gross margin on device (%)
-                      <input name="margin_pct" id="econ-margin" type="number" min="0" max="100" step="1" value="22" />
-                    </label>
-                    <label class="field">Baseline monthly closes (no same-day)
-                      <input name="baseline" id="econ-baseline" type="number" min="0" step="1" value="200" />
-                    </label>
-                    <label class="field">Expected conversion lift from same-day (%)
-                      <input name="lift_pct" id="econ-lift" type="number" min="0" max="100" step="0.5" value="10" />
-                    </label>
-                    <label class="field">Mismatch / non-pay rate (%)
-                      <input name="mismatch_pct" id="econ-mismatch" type="number" min="0" max="100" step="0.5" value="8" />
-                    </label>
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            <div class="stat-row" id="econ-stats" style="grid-template-columns:repeat(2,1fr)">
-              <div class="stat"><div class="label">PurCheaper cost / mo</div><div class="value" id="econ-cost">—</div><div class="sub" id="econ-cost-sub">Subscription + overage</div></div>
-              <div class="stat"><div class="label">Software cost / order</div><div class="value" id="econ-cpp">—</div><div class="sub">Blended SaaS</div></div>
-              <div class="stat"><div class="label">Incremental closes</div><div class="value" id="econ-extra">—</div><div class="sub">From conversion lift</div></div>
-              <div class="stat"><div class="label">Net after PurCheaper</div><div class="value" id="econ-net">—</div><div class="sub" id="econ-net-sub">Incremental GP − fees</div></div>
-            </div>
-
-            <div class="two-col">
-              <div class="panel">
-                <div class="panel-head"><h2>Partner ROI breakdown</h2></div>
-                <div class="panel-body pad">
-                  <table class="app" style="min-width:0">
-                    <tbody id="econ-roi-body"></tbody>
-                  </table>
-                  <p class="text-sm text-muted mt-1" id="econ-verdict"></p>
-                </div>
-              </div>
-              <div class="panel">
-                <div class="panel-head"><h2>Per completed pickup (fee stack)</h2></div>
-                <div class="panel-body pad">
-                  <table class="app" style="min-width:0">
-                    <tbody id="econ-unit-body"></tbody>
-                  </table>
-                  <p class="text-sm text-muted mt-1">
-                    PurCheaper’s internal driver + ops costs are not billed to you line-by-line — you pay the plan rates above. Use this stack to compare vs building your own courier desk.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div class="panel">
-              <div class="panel-head"><h2>Plan cheatsheet</h2></div>
-              <div class="panel-body" style="overflow:auto">
-                <table class="app">
-                  <thead>
-                    <tr>
-                      <th>Plan</th>
-                      <th>Monthly</th>
-                      <th>Per pickup</th>
-                      <th>Same-day pay</th>
-                      <th>Cap</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td><strong>Starter</strong></td>
-                      <td>$99</td>
-                      <td>$0 (SaaS)</td>
-                      <td>Tools included</td>
-                      <td>200 orders</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Growth</strong></td>
-                      <td>$249</td>
-                      <td>$0 (SaaS)</td>
-                      <td>Tools included</td>
-                      <td>1,500 orders</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Network</strong></td>
-                      <td>$699</td>
-                      <td>$0 (SaaS)</td>
-                      <td>Tools included</td>
-                      <td>10,000 orders</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- INTEGRATIONS VIEW -->
-        <section id="view-integrations" class="hidden">
-          <div class="panel">
-            <div class="panel-head">
-              <h2>Driver platform integrations</h2>
-              <span class="chip chip-brand">SaaS connectors</span>
-            </div>
-            <div class="panel-body pad">
-              <p class="text-sm text-muted mb-1">
-                PurCheaper connects your buyback orders to <strong>Roadie</strong>, <strong>Shipt</strong>, and other driver platforms — plus your own fleet.
-                You choose the provider; you and the platform own capacity and liability. We provide the integration, status sync, and checklist/pay-gate layer.
-              </p>
-              <div id="integrations-list" class="stack"></div>
             </div>
           </div>
         </section>
@@ -411,9 +155,7 @@
             <div class="panel-head"><h2>API credentials</h2></div>
             <div class="panel-body pad stack">
               <p class="text-sm">Send <span class="mono">X-API-Key</span> or <span class="mono">Authorization: Bearer &lt;jwt&gt;</span> on partner routes.</p>
-              <label class="field">Your API key
-                <input id="api-key" class="mono" readonly />
-              </label>
+              <label class="field">Your API key<input id="api-key" class="mono" readonly /></label>
               <div class="row">
                 <button class="btn btn-soft btn-sm" type="button" id="btn-copy-key">Copy key</button>
                 <a class="btn btn-ghost btn-sm" href="/partners#api">API docs</a>
@@ -428,15 +170,10 @@
   <!-- Assign modal -->
   <div class="modal-backdrop" id="assign-modal">
     <div class="modal">
-      <header>
-        <h3>Assign driver</h3>
-        <button class="btn btn-ghost btn-sm" type="button" data-close>×</button>
-      </header>
+      <header><h3>Assign driver</h3><button class="btn btn-ghost btn-sm" type="button" data-close>×</button></header>
       <div class="body">
         <input type="hidden" id="assign-order-id" />
-        <label class="field">Driver
-          <select id="assign-driver"></select>
-        </label>
+        <label class="field">Driver<select id="assign-driver"></select></label>
       </div>
       <div class="footer-actions">
         <button class="btn btn-ghost btn-sm" type="button" data-close>Cancel</button>
