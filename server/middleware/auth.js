@@ -25,4 +25,7 @@ function requireAuth(role) {
   };
 }
 
-module.exports = { signToken, requireAuth };
+// Convenience alias — routes import requirePartner directly
+const requirePartner = requireAuth('partner');
+
+module.exports = { signToken, requireAuth, requirePartner };

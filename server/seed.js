@@ -2,16 +2,22 @@ require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const { v4: uuid } = require('uuid');
 const path = require('path');
-const { openDb, DB_PATH, EMPTY, save, ensureDir } = require('./db');
+const { getDb, DB_PATH } = require('./db');
 
 const reset = process.argv.includes('--reset');
-if (reset) {
-  ensureDir(DB_PATH);
-  save(EMPTY());
-  console.log('Reset database to empty store.');
-}
 
-const db = openDb();
+// getDb() initialises the schema (creates tables) on first call
+const db = getDb();
+
+if (reset) {
+  console.log('Resetting database…');
+  db.prepare('DELETE FROM order_events').run();
+  db.prepare('DELETE FROM orders').run();
+  db.prepare('DELETE FROM drivers').run();
+  db.prepare('DELETE FROM partners').run();
+  try { db.prepare('DELETE FROM leads').run(); } catch (_) {}
+  console.log('Database cleared.');
+}
 
 const partnerCount = db.prepare('SELECT COUNT(*) AS c FROM partners').get().c;
 const orderCount   = db.prepare('SELECT COUNT(*) AS c FROM orders').get().c;
@@ -185,5 +191,5 @@ console.log('OddCoop seed complete — ' + finalCount + ' orders in DB.');
 console.log('');
 console.log('  Partner login:  partner@wasatchbuybacks.demo / demo1234');
 console.log('  Driver login:   sam.driver@oddcoop.demo  / driver1234');
-console.log('  DB:', path.resolve(DB_PATH));
+console.log('  DB path:', path.resolve(DB_PATH));
 console.log('');
