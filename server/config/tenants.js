@@ -1,9 +1,8 @@
 /**
- * Tenant registry — now backed by the DB (data/oddcoop.json coops array).
- * Falls back to the hardcoded STATIC_TENANTS so the app works before any
- * coops are registered and so existing seed data is never lost.
+ * Tenant registry — backed by DB (data/oddcoop.json coops array).
+ * Falls back to STATIC_TENANTS so the app works before any coops are registered.
  *
- * resolveTenant(host) is unchanged — callers don't need to change.
+ * resolveTenant(host) is unchanged for callers.
  */
 const { getDb } = require('../db');
 
@@ -33,8 +32,14 @@ const STATIC_TENANTS = {
 };
 
 /**
+ * Hosts that map to wasatchbuybacks in local development.
+ * This lets localhost:3847 behave identically to wasatchbuybacks.oddcoop.app.
+ */
+const DEV_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0']);
+
+/**
  * Build the live tenant map: static tenants merged with any DB-registered coops.
- * DB records win over static defaults (so a coop can update their branding via the API).
+ * DB records win over static defaults (so a coop can update branding via the API).
  */
 function getTenants() {
   let dbCoops = [];
@@ -58,7 +63,17 @@ function getTenants() {
 function resolveTenant(host) {
   const tenants = getTenants();
   if (!host) return tenants.default || STATIC_TENANTS.default;
-  const sub = host.split('.')[0].toLowerCase().replace(/:\d+$/, '');
+
+  // strip port, lowercase
+  const bare = host.split(':')[0].toLowerCase();
+
+  // local dev → always use wasatchbuybacks so demo data loads correctly
+  if (DEV_HOSTS.has(bare)) {
+    return tenants.wasatchbuybacks || STATIC_TENANTS.wasatchbuybacks;
+  }
+
+  // production: match on subdomain (e.g. wasatchbuybacks.oddcoop.app)
+  const sub = bare.split('.')[0];
   return tenants[sub] || tenants.default || STATIC_TENANTS.default;
 }
 
@@ -73,4 +88,4 @@ const TENANTS = new Proxy({}, {
   },
 });
 
-module.exports = { TENANTS, getTenants, resolveTenant, STATIC_TENANTS };
+module.exports = { TENANTS, getTenants, resolveTenant, STATIC_TENANTS, DEV_HOSTS };
