@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="{{COOP_COLOR}}" />
-  <title>Dashboard — {{COOP_NAME}}</title>
+  <meta name="theme-color" content="#2d8b8b" id="meta-theme-color" />
+  <title>Dashboard</title>
   <link rel="stylesheet" href="/css/site.css?v=2" />
 </head>
 <body class="app-body">
@@ -14,11 +14,11 @@
       <a class="brand" href="/">
         <div class="brand-icon">
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="{{COOP_COLOR}}"/>
-            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700">{{COOP_LOGO_LETTER}}</text>
+            <rect width="32" height="32" rx="8" fill="#2d8b8b" id="logo-rect"/>
+            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700" id="logo-letter">O</text>
           </svg>
         </div>
-        {{COOP_NAME}}
+        <span id="coop-name">OddCoop</span>
       </a>
 
       <nav class="side-nav">
@@ -55,8 +55,8 @@
     <div class="app-main">
       <header class="app-top">
         <div>
-          <h1 id="view-title">Orders</h1>
-          <p class="text-sm text-muted" id="view-sub">{{COOP_MARKET}} · {{COOP_CORRIDOR}}</p>
+          <h1 id="view-title">Dashboard</h1>
+          <p class="text-sm text-muted" id="view-sub">Loading…</p>
         </div>
         <div class="row gap-2">
           <button class="btn btn-ghost btn-sm" id="btn-refresh" type="button">Refresh</button>
@@ -201,5 +201,41 @@
 
   <script src="/js/api.js?v=2"></script>
   <script src="/js/dashboard.js?v=2"></script>
+  <script>
+    // ── coop hydration ──────────────────────────────────────────────
+    (async function hydrate() {
+      try {
+        const res  = await fetch('/api/coop');
+        const coop = await res.json();
+        const name     = coop.name        || 'OddCoop';
+        const color    = coop.color       || '#2d8b8b';
+        const letter   = coop.logo_letter || name[0].toUpperCase();
+        const market   = coop.market      || '';
+        const corridor = coop.corridor    || '';
+
+        const nameEl = document.getElementById('coop-name');
+        if (nameEl) nameEl.textContent = name;
+
+        const rectEl = document.getElementById('logo-rect');
+        if (rectEl) rectEl.setAttribute('fill', color);
+
+        const letterEl = document.getElementById('logo-letter');
+        if (letterEl) letterEl.textContent = letter;
+
+        document.title = 'Dashboard — ' + name;
+
+        const meta = document.getElementById('meta-theme-color');
+        if (meta) meta.setAttribute('content', color);
+
+        document.documentElement.style.setProperty('--brand', color);
+
+        const sub = document.getElementById('view-sub');
+        if (sub) {
+          const parts = [market, corridor].filter(Boolean);
+          sub.textContent = parts.length ? parts.join(' · ') : name;
+        }
+      } catch (e) { console.warn('dashboard coop hydration failed', e); }
+    })();
+  </script>
 </body>
 </html>

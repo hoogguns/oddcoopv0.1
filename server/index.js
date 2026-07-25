@@ -19,8 +19,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// boot DB early so seed data is available before first request
-try { getDb(); } catch (e) { console.error('DB init error:', e.message); }
+// ── boot DB + auto-seed ───────────────────────────────────────────────────────
+try {
+  const db = getDb();
+  const d  = db._data();
+  const isEmpty =
+    (!d.partners || d.partners.length === 0) &&
+    (!d.drivers  || d.drivers.length  === 0) &&
+    (!d.orders   || d.orders.length   === 0);
+  if (isEmpty) {
+    console.log('📦  Empty database detected — running auto-seed...');
+    const { runSeed } = require('./seed');
+    runSeed();
+    console.log('✅  Auto-seed complete.');
+  }
+} catch (e) {
+  console.error('DB init / seed error:', e.message);
+}
 
 // ── routes ────────────────────────────────────────────────────────────────────
 const authRouter    = require('./routes/auth');
@@ -39,7 +54,7 @@ app.get('/dashboard', (_req, res) => res.sendFile(path.join(__dirname, '..', 'pu
 app.get('/drivers',   (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'drivers.html')));
 app.get('/join',      (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'join.html')));
 
-// fallback → login (app.use avoids Express 5 wildcard path-to-regexp crash)
+// fallback → login
 app.use((_req, res) => res.redirect('/login'));
 
 app.listen(PORT, () => {
