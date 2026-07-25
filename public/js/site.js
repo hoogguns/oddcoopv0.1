@@ -2,8 +2,6 @@
 (function () {
 
   // ── coop token hydration ──────────────────────────────────────────────────
-  // Replaces every {{COOP_NAME}}, {{COOP_MARKET}}, {{COOP_CORRIDOR}} text node
-  // on the page with live data from /api/coop.
   async function hydrateCoop() {
     let coop;
     try {
@@ -14,13 +12,18 @@
       return;
     }
 
+    const name   = coop.name        || 'OddCoop';
+    const color  = coop.color       || '#2d8b8b';
+    const letter = coop.logo_letter || name[0].toUpperCase();
+
     const tokens = {
-      '{{COOP_NAME}}':      coop.name      || 'OddCoop',
-      '{{COOP_MARKET}}':   coop.market    || '',
-      '{{COOP_CORRIDOR}}': coop.corridor  || '',
+      '{{COOP_NAME}}':        name,
+      '{{COOP_MARKET}}':      coop.market   || '',
+      '{{COOP_CORRIDOR}}':    coop.corridor || '',
+      '{{COOP_COLOR}}':       color,
+      '{{COOP_LOGO_LETTER}}': letter,
     };
 
-    // Walk all text nodes in the document and replace tokens
     function walk(node) {
       if (node.nodeType === Node.TEXT_NODE) {
         let val = node.nodeValue;
@@ -30,8 +33,7 @@
         }
         if (changed) node.nodeValue = val;
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        // Also patch attributes (placeholder, title, content, href)
-        for (const attr of ['placeholder', 'title', 'content', 'aria-label', 'alt']) {
+        for (const attr of ['placeholder', 'title', 'content', 'aria-label', 'alt', 'fill', 'href']) {
           const v = node.getAttribute(attr);
           if (!v) continue;
           let nv = v;
@@ -43,13 +45,15 @@
     }
     walk(document.body);
 
-    // Also patch document.title
+    // patch title
     let t = document.title;
     for (const [tok, rep] of Object.entries(tokens)) t = t.split(tok).join(rep);
     document.title = t;
 
-    // Set CSS custom property so inline styles can use it
-    if (coop.color) document.documentElement.style.setProperty('--brand', coop.color);
+    // CSS var + meta theme-color
+    document.documentElement.style.setProperty('--brand', color);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', color);
   }
 
   // ── mobile nav ────────────────────────────────────────────────────────────
@@ -75,7 +79,5 @@
   }
 
   document.querySelectorAll('.topbar').forEach(initNav);
-
-  // Run hydration immediately (non-blocking)
   hydrateCoop();
 })();
