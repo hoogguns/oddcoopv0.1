@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join the OddCoop Network</title>
+  <link rel="stylesheet" href="/css/style.css?v=2">
+  <style>
+    body { background: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; }
+    .join-wrap { max-width: 680px; margin: 48px auto; padding: 0 20px 80px; }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+    .brand-icon { width: 40px; height: 40px; background: #2d8b8b; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; }
+    .brand-name { font-weight: 700; font-size: 17px; color: #111; }
+    h1 { font-size: 28px; font-weight: 800; color: #111; margin: 0 0 8px; }
+    .sub { color: #555; font-size: 15px; margin-bottom: 32px; line-height: 1.5; }
+    .network-bar { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px; display: flex; gap: 32px; flex-wrap: wrap; }
+    .network-stat { display: flex; flex-direction: column; }
+    .network-stat .val { font-size: 24px; font-weight: 800; color: #2d8b8b; }
+    .network-stat .lbl { font-size: 12px; color: #777; margin-top: 2px; }
+    .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 14px; padding: 28px 32px; margin-bottom: 20px; }
+    .card h2 { font-size: 16px; font-weight: 700; color: #111; margin: 0 0 20px; }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1.5px solid #d0d0d0; border-radius: 8px; font-size: 14px; outline: none; transition: border 0.15s; }
+    input:focus, textarea:focus { border-color: #2d8b8b; }
+    textarea { resize: vertical; min-height: 80px; }
+    .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    .zip-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 32px; }
+    .zip-tag { background: #e8f5f5; color: #2d8b8b; border: 1px solid #b2dfdf; border-radius: 20px; padding: 3px 10px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+    .zip-tag button { background: none; border: none; color: #2d8b8b; cursor: pointer; font-size: 15px; line-height: 1; padding: 0; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .btn-submit { width: 100%; padding: 14px; background: #2d8b8b; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: background 0.15s; }
+    .btn-submit:hover { background: #256f6f; }
+    .btn-submit:disabled { background: #a0c8c8; cursor: not-allowed; }
+    .network-coops { margin-top: 24px; }
+    .network-coops h3 { font-size: 14px; font-weight: 700; color: #555; margin: 0 0 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .coop-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #e8e8e8; border-radius: 10px; margin-bottom: 8px; background: #fafafa; }
+    .coop-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 16px; flex-shrink: 0; }
+    .coop-info { flex: 1; }
+    .coop-info .cn { font-weight: 700; font-size: 14px; color: #111; }
+    .coop-info .cm { font-size: 12px; color: #777; }
+    .coop-badge { font-size: 11px; background: #e8f5f5; color: #2d8b8b; border-radius: 12px; padding: 2px 8px; font-weight: 600; }
+    .alert { border-radius: 10px; padding: 14px 18px; font-size: 14px; margin-bottom: 20px; display: none; }
+    .alert.error   { background: #fff0f0; border: 1px solid #f5c6c6; color: #c0392b; }
+    .alert.success { background: #f0fff8; border: 1px solid #a8e6cf; color: #1a7a4a; }
+    @media (max-width: 540px) { .row2 { grid-template-columns: 1fr; } .card { padding: 20px; } }
+  </style>
+</head>
+<body>
+<div class="join-wrap">
+  <div class="brand">
+    <div class="brand-icon">O</div>
+    <span class="brand-name">OddCoop</span>
+  </div>
+
+  <h1>Join the OddCoop Network</h1>
+  <p class="sub">Your coop gets same-day pickup capacity in every current member territory the moment you join. Every new member makes the network more valuable for everyone.</p>
+
+  <div class="network-bar">
+    <div class="network-stat"><span class="val" id="stat-coops">—</span><span class="lbl">Active coops</span></div>
+    <div class="network-stat"><span class="val" id="stat-drivers">—</span><span class="lbl">Network drivers</span></div>
+    <div class="network-stat"><span class="val" id="stat-zips">—</span><span class="lbl">ZIP codes covered</span></div>
+    <div class="network-stat"><span class="val" id="stat-cities">—</span><span class="lbl">Cities served</span></div>
+  </div>
+
+  <div id="alert" class="alert"></div>
+
+  <form id="join-form">
+    <div class="card">
+      <h2>Your coop</h2>
+      <div class="field">
+        <label>Coop / business name *</label>
+        <input type="text" id="f-name" placeholder="e.g. Denver Device Buyers" required>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Your market</label>
+          <input type="text" id="f-market" placeholder="e.g. Front Range, Colorado">
+        </div>
+        <div class="field">
+          <label>Corridor</label>
+          <input type="text" id="f-corridor" placeholder="e.g. Denver → Boulder → Fort Collins">
+        </div>
+      </div>
+      <div class="field">
+        <label>Brand color (hex)</label>
+        <input type="text" id="f-color" placeholder="#2d8b8b" maxlength="7">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Your territory — ZIP codes</h2>
+      <div class="field">
+        <label>Add ZIP codes (press Enter or comma after each)</label>
+        <input type="text" id="f-zip-input" placeholder="e.g. 80202">
+        <div class="hint">Enter every ZIP code your drivers can service for same-day pickups.</div>
+        <div class="zip-tags" id="zip-tags"></div>
+        <input type="hidden" id="f-zip-codes">
+      </div>
+      <div class="field">
+        <label>Cities (comma-separated)</label>
+        <input type="text" id="f-cities" placeholder="Denver, Boulder, Aurora, Lakewood">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Your contact</h2>
+      <div class="row2">
+        <div class="field">
+          <label>Contact name *</label>
+          <input type="text" id="f-contact" placeholder="First Last" required>
+        </div>
+        <div class="field">
+          <label>Contact email *</label>
+          <input type="email" id="f-email" placeholder="you@yourbuyback.com" required>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Phone</label>
+          <input type="tel" id="f-phone" placeholder="720-555-0100">
+        </div>
+        <div class="field">
+          <label>Website</label>
+          <input type="text" id="f-website" placeholder="https://yourbuyback.com">
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-submit" id="btn-submit">Join the network →</button>
+  </form>
+
+  <div class="network-coops">
+    <h3>Current network members</h3>
+    <div id="coop-list">Loading...</div>
+  </div>
+</div>
+
+<script src="/js/join.js?v=1"></script>
+</body>
+</html>
