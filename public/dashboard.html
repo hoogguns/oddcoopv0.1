@@ -4,39 +4,83 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#2d8b8b" id="meta-theme-color" />
-  <title>Dashboard</title>
+  <title>Dashboard — OddCoop</title>
   <link rel="stylesheet" href="/css/site.css?v=2" />
 </head>
 <body class="app-body">
 
-  <div class="app-shell" id="app-shell">
+  <!-- ===== LOGIN VIEW ===================================================== -->
+  <div id="login-view" class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg width="36" height="36" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#2d8b8b" id="login-logo-rect"/>
+          <text x="16" y="22" text-anchor="middle" fill="white" font-size="16"
+                font-family="sans-serif" font-weight="700" id="login-logo-letter">O</text>
+        </svg>
+        <span id="login-coop-name">OddCoop</span>
+      </div>
+      <h1 class="auth-heading">Partner sign in</h1>
+      <div id="login-alert" class="hidden"></div>
+      <form id="login-form" class="stack">
+        <label class="field">Email
+          <input name="email" type="email" autocomplete="email" required placeholder="you@example.com" />
+        </label>
+        <label class="field">Password
+          <input name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+      </form>
+      <p class="text-sm text-muted" style="text-align:center;margin-top:.75rem">
+        Driver? <a href="/drivers">Driver portal →</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- ===== APP VIEW ======================================================= -->
+  <div id="app-view" class="app-shell hidden">
     <aside class="sidebar">
       <a class="brand" href="/">
         <div class="brand-icon">
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
             <rect width="32" height="32" rx="8" fill="#2d8b8b" id="logo-rect"/>
-            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700" id="logo-letter">O</text>
+            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16"
+                  font-family="sans-serif" font-weight="700" id="logo-letter">O</text>
           </svg>
         </div>
         <span id="coop-name">OddCoop</span>
       </a>
+
+      <!-- stats row -->
+      <div id="stats-row" class="side-stats" style="padding:.5rem 1rem;font-size:.78rem;color:var(--muted)">
+        <span id="s-open">-</span> open &nbsp;|
+        <span id="s-total">-</span> total
+      </div>
 
       <nav class="side-nav">
         <a href="#" class="active" data-view="orders">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
           Orders
         </a>
+        <a href="#" data-view="create">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New pickup
+        </a>
         <a href="#" data-view="drivers">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Drivers
         </a>
-        <a href="#" data-view="stats">
+        <a href="#" data-view="economics">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Stats
+          Economics
         </a>
-        <a href="#" data-view="settings">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          Settings
+        <a href="#" data-view="api">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          API access
+        </a>
+        <a href="#" data-view="integrations">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Integrations
         </a>
       </nav>
 
@@ -55,31 +99,58 @@
     <div class="app-main">
       <header class="app-top">
         <div>
-          <h1 id="view-title">Dashboard</h1>
-          <p class="text-sm text-muted" id="view-sub">Loading…</p>
+          <h1 id="view-title">Orders</h1>
+          <p class="text-sm text-muted" id="view-sub">—</p>
         </div>
         <div class="row gap-2">
           <button class="btn btn-ghost btn-sm" id="btn-refresh" type="button">Refresh</button>
-          <button class="btn btn-primary btn-sm" id="btn-new-order" type="button">+ New order</button>
+          <button class="btn btn-primary btn-sm" id="btn-new-pickup" type="button">+ New pickup</button>
         </div>
       </header>
+
+      <!-- profit / live economics strip -->
+      <div id="profit-panel" class="profit-strip" style="display:none">
+        <div class="profit-cell">
+          <div class="profit-label">Partner invoice <span id="profit-period" class="text-muted"></span></div>
+          <div class="profit-val" id="m-invoice">—</div>
+          <div class="text-sm text-muted" id="m-invoice-sub"></div>
+        </div>
+        <div class="profit-cell">
+          <div class="profit-label">Platform contribution</div>
+          <div class="profit-val" id="m-profit">—</div>
+          <div class="text-sm text-muted" id="m-profit-sub"></div>
+        </div>
+        <div class="profit-cell">
+          <div class="profit-label">Completed pickups</div>
+          <div class="profit-val" id="m-pickups">—</div>
+          <div class="text-sm text-muted" id="m-pickups-sub"></div>
+        </div>
+        <div class="profit-cell">
+          <div class="profit-label">Contribution margin</div>
+          <div class="profit-val" id="m-unit">—</div>
+          <div class="text-sm text-muted" id="m-unit-sub"></div>
+        </div>
+      </div>
 
       <main class="app-content">
 
         <!-- ORDERS VIEW -->
         <section id="view-orders">
           <div class="filter-bar">
-            <div class="filter-tabs" id="status-tabs">
-              <button class="filter-tab active" data-status="">All</button>
-              <button class="filter-tab" data-status="pending">Pending</button>
-              <button class="filter-tab" data-status="en_route">En route</button>
-              <button class="filter-tab" data-status="picked_up">Picked up</button>
-              <button class="filter-tab" data-status="verified">Verified</button>
-              <button class="filter-tab" data-status="mismatch">Mismatch</button>
-              <button class="filter-tab" data-status="paid">Paid</button>
-              <button class="filter-tab" data-status="cancelled">Cancelled</button>
-            </div>
-            <input class="search-input" id="order-search" placeholder="Search ref, seller, device…" />
+            <select id="status-filter" class="select-sm">
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="assigned">Assigned</option>
+              <option value="en_route">En route</option>
+              <option value="picked_up">Picked up</option>
+              <option value="verified">Verified</option>
+              <option value="mismatch">Mismatch</option>
+              <option value="paid">Paid</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <input class="search-input" id="q" placeholder="Search ref, seller, device…" />
+            <button class="btn btn-ghost btn-sm" id="btn-filter" type="button">Filter</button>
+            <span class="text-sm text-muted" id="order-count"></span>
           </div>
 
           <div class="panel">
@@ -87,32 +158,75 @@
               <table class="app" id="orders-table">
                 <thead>
                   <tr>
-                    <th>Ref</th>
-                    <th>Seller</th>
-                    <th>Device</th>
-                    <th>City</th>
+                    <th>Ref / Device</th>
+                    <th>Seller / City</th>
                     <th>Quote</th>
                     <th>Status</th>
                     <th>Driver</th>
-                    <th>Window</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody id="orders-body">
-                  <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">Loading orders…</td></tr>
+                  <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Loading orders…</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          <!-- Order detail drawer -->
-          <div class="drawer" id="order-drawer">
-            <div class="drawer-inner">
-              <div class="drawer-head">
-                <h2 id="drawer-title">Order detail</h2>
-                <button class="btn btn-ghost btn-sm" id="drawer-close" type="button">×</button>
+          <!-- empty state -->
+          <div id="orders-empty" class="hidden" style="text-align:center;padding:3rem;color:var(--muted)">
+            No orders yet. <a href="#" data-view="create" class="side-nav-inline">Create your first pickup →</a>
+          </div>
+
+          <!-- Detail panel -->
+          <div id="detail-panel" style="display:none;margin-top:1.5rem">
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Order detail</h2>
+                <span id="detail-status"></span>
               </div>
-              <div class="drawer-body" id="drawer-body"></div>
+              <div class="panel-body pad" id="detail-body"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CREATE VIEW -->
+        <section id="view-create" class="hidden">
+          <div class="panel" style="max-width:600px">
+            <div class="panel-head"><h2>New pickup order</h2></div>
+            <div class="panel-body pad">
+              <div id="create-alert" class="hidden"></div>
+              <form id="create-form" class="stack">
+                <div class="form-grid">
+                  <label class="field">Seller name<input name="seller_name" required /></label>
+                  <label class="field">Seller phone<input name="seller_phone" required /></label>
+                  <label class="field full">Seller email<input name="seller_email" type="email" /></label>
+                  <label class="field full">Pickup address<input name="pickup_address" required /></label>
+                  <label class="field">City<input name="pickup_city" required /></label>
+                  <label class="field">ZIP<input name="pickup_zip" required /></label>
+                  <label class="field">Brand
+                    <select name="device_brand" required>
+                      <option value="">Select…</option>
+                      <option>Apple</option><option>Samsung</option><option>Google</option><option>Other</option>
+                    </select>
+                  </label>
+                  <label class="field">Model<input name="device_model" required /></label>
+                  <label class="field">Color<input name="device_color" placeholder="Midnight" /></label>
+                  <label class="field">Storage
+                    <select name="device_storage">
+                      <option>64GB</option><option>128GB</option><option selected>256GB</option><option>512GB</option>
+                    </select>
+                  </label>
+                  <label class="field">Condition
+                    <select name="device_condition" required>
+                      <option>Excellent</option><option selected>Good</option><option>Fair</option><option>Poor</option>
+                    </select>
+                  </label>
+                  <label class="field">Quote ($)<input name="quoted_amount" type="number" min="1" required /></label>
+                  <label class="field">External ref<input name="external_ref" placeholder="WB-00001" /></label>
+                </div>
+                <button class="btn btn-primary btn-block" type="submit">Create order →</button>
+              </form>
             </div>
           </div>
         </section>
@@ -120,34 +234,86 @@
         <!-- DRIVERS VIEW -->
         <section id="view-drivers" class="hidden">
           <div class="panel">
-            <div class="panel-head"><h2>Available drivers</h2><span class="text-sm text-muted" id="driver-count"></span></div>
+            <div class="panel-head"><h2>Driver network</h2></div>
             <div class="panel-body" style="overflow:auto">
               <table class="app">
-                <thead><tr><th>Name</th><th>Code</th><th>Vehicle</th><th>Zones</th><th>Rating</th><th>Status</th></tr></thead>
-                <tbody id="drivers-body"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Loading…</td></tr></tbody>
+                <thead>
+                  <tr><th>Name</th><th>Zones</th><th>Vehicle</th><th>Code</th><th>Rating</th><th>Status</th></tr>
+                </thead>
+                <tbody id="drivers-body">
+                  <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Loading…</td></tr>
+                </tbody>
               </table>
             </div>
           </div>
         </section>
 
-        <!-- STATS VIEW -->
-        <section id="view-stats" class="hidden">
-          <div class="stats-grid" id="stats-grid">
-            <div class="stat-card"><div class="stat-label">Total orders</div><div class="stat-value" id="s-total">-</div></div>
-            <div class="stat-card"><div class="stat-label">Paid today</div><div class="stat-value" id="s-paid">-</div></div>
-            <div class="stat-card"><div class="stat-label">Avg quote</div><div class="stat-value" id="s-avg">-</div></div>
-            <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value" id="s-pending">-</div></div>
-            <div class="stat-card"><div class="stat-label">Mismatches</div><div class="stat-value" id="s-mismatch">-</div></div>
-            <div class="stat-card"><div class="stat-label">Volume ($)</div><div class="stat-value" id="s-volume">-</div></div>
+        <!-- ECONOMICS VIEW -->
+        <section id="view-economics" class="hidden">
+          <div style="display:grid;gap:1rem;grid-template-columns:1fr 1fr;max-width:860px">
+            <div class="stat-card"><div class="stat-label">Partner SaaS invoice</div><div class="stat-value" id="e-live-invoice">—</div><div class="text-sm text-muted" id="e-live-invoice-sub"></div></div>
+            <div class="stat-card"><div class="stat-label">Platform contribution</div><div class="stat-value" id="e-live-profit">—</div><div class="text-sm text-muted" id="e-live-profit-sub"></div></div>
+          </div>
+          <div class="panel" style="max-width:860px;margin-top:1rem">
+            <div class="panel-head"><h2>Billing breakdown</h2><button class="btn btn-ghost btn-sm" id="btn-econ-refresh" type="button">Refresh</button></div>
+            <div class="panel-body pad">
+              <table class="app"><tbody id="e-live-breakdown"></tbody></table>
+            </div>
+          </div>
+          <div class="panel" style="max-width:860px;margin-top:1rem">
+            <div class="panel-head"><h2>ROI calculator</h2></div>
+            <div class="panel-body pad">
+              <form id="econ-form" class="form-grid">
+                <label class="field">Plan
+                  <select id="econ-plan" name="econ-plan">
+                    <option value="starter">Starter ($99/mo)</option>
+                    <option value="growth" selected>Growth ($249/mo)</option>
+                    <option value="network">Network ($699/mo)</option>
+                  </select>
+                </label>
+                <label class="field">Orders / mo<input id="econ-pickups" name="econ-pickups" type="number" value="300" min="0" /></label>
+                <label class="field">Avg quote ($)<input id="econ-quote" name="econ-quote" type="number" value="250" min="0" /></label>
+                <label class="field">Gross margin (%)<input id="econ-margin" name="econ-margin" type="number" value="18" min="0" max="100" /></label>
+                <label class="field">Baseline closes / mo<input id="econ-baseline" name="econ-baseline" type="number" value="500" min="0" /></label>
+                <label class="field">Lift from same-day (%)<input id="econ-lift" name="econ-lift" type="number" value="8" min="0" max="100" /></label>
+                <label class="field">Mismatch rate (%)<input id="econ-mismatch" name="econ-mismatch" type="number" value="5" min="0" max="100" /></label>
+              </form>
+              <div style="display:grid;gap:1rem;grid-template-columns:repeat(4,1fr);margin-top:1rem">
+                <div class="stat-card"><div class="stat-label">SaaS cost/mo</div><div class="stat-value" id="econ-cost">—</div><div class="text-sm text-muted" id="econ-cost-sub"></div></div>
+                <div class="stat-card"><div class="stat-label">Cost/pickup</div><div class="stat-value" id="econ-cpp">—</div></div>
+                <div class="stat-card"><div class="stat-label">Extra closes</div><div class="stat-value" id="econ-extra">—</div></div>
+                <div class="stat-card"><div class="stat-label">Net ROI/mo</div><div class="stat-value" id="econ-net">—</div><div class="text-sm text-muted" id="econ-net-sub"></div></div>
+              </div>
+              <p id="econ-verdict" class="text-sm" style="margin-top:.75rem"></p>
+              <table class="app" style="margin-top:1rem"><tbody id="econ-roi-body"></tbody></table>
+            </div>
           </div>
         </section>
 
-        <!-- SETTINGS VIEW -->
-        <section id="view-settings" class="hidden">
+        <!-- API VIEW -->
+        <section id="view-api" class="hidden">
           <div class="panel" style="max-width:520px">
-            <div class="panel-head"><h2>Account settings</h2></div>
+            <div class="panel-head"><h2>API access</h2></div>
             <div class="panel-body pad">
-              <div id="settings-body"><p class="text-sm text-muted">Loading…</p></div>
+              <p class="text-sm text-muted">Use your API key to POST orders from your own system.</p>
+              <label class="field">Email<input id="side-email" readonly /></label>
+              <label class="field" style="margin-top:.75rem">API key
+                <div class="row gap-1">
+                  <input id="api-key" class="mono" readonly style="flex:1" />
+                  <button class="btn btn-ghost btn-sm" id="btn-copy-key" type="button">Copy key</button>
+                </div>
+              </label>
+              <p class="text-sm text-muted" style="margin-top:1rem">POST to <code>/api/partner/orders</code> with <code>Authorization: Bearer &lt;key&gt;</code></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- INTEGRATIONS VIEW -->
+        <section id="view-integrations" class="hidden">
+          <div class="panel" style="max-width:700px">
+            <div class="panel-head"><h2>Driver platform integrations</h2></div>
+            <div class="panel-body pad" id="integrations-list">
+              <p class="text-sm text-muted">Loading…</p>
             </div>
           </div>
         </section>
@@ -156,45 +322,19 @@
     </div>
   </div>
 
-  <!-- New order modal -->
-  <div class="modal-overlay hidden" id="new-order-modal">
+  <!-- Assign driver modal -->
+  <div class="modal-overlay" id="assign-modal" style="display:none">
     <div class="modal">
       <div class="modal-head">
-        <h2>New order</h2>
-        <button class="btn btn-ghost btn-sm" id="modal-close" type="button">×</button>
+        <h2>Assign driver</h2>
+        <button class="btn btn-ghost btn-sm" data-close type="button">×</button>
       </div>
       <div class="modal-body">
-        <div id="modal-alert" class="hidden"></div>
-        <form id="new-order-form" class="stack">
-          <div class="form-grid">
-            <label class="field">Seller name<input name="seller_name" required /></label>
-            <label class="field">Seller phone<input name="seller_phone" required /></label>
-            <label class="field full">Seller email<input name="seller_email" type="email" /></label>
-            <label class="field full">Pickup address<input name="pickup_address" required /></label>
-            <label class="field">City<input name="pickup_city" required /></label>
-            <label class="field">ZIP<input name="pickup_zip" required /></label>
-            <label class="field">Brand
-              <select name="device_brand" required>
-                <option value="">Select…</option>
-                <option>Apple</option><option>Samsung</option><option>Google</option><option>Other</option>
-              </select>
-            </label>
-            <label class="field">Model<input name="device_model" required /></label>
-            <label class="field">Storage
-              <select name="device_storage">
-                <option>64GB</option><option>128GB</option><option selected>256GB</option><option>512GB</option>
-              </select>
-            </label>
-            <label class="field">Condition
-              <select name="device_condition" required>
-                <option>Excellent</option><option selected>Good</option><option>Fair</option><option>Poor</option>
-              </select>
-            </label>
-            <label class="field">Quote ($)<input name="quoted_amount" type="number" min="1" required /></label>
-            <label class="field">External ref<input name="external_ref" placeholder="WBB-00001" /></label>
-          </div>
-          <button class="btn btn-primary btn-block" type="submit" id="new-order-btn">Create order →</button>
-        </form>
+        <input type="hidden" id="assign-order-id" />
+        <label class="field" style="margin-bottom:1rem">Driver
+          <select id="assign-driver" style="min-height:40px"></select>
+        </label>
+        <button class="btn btn-primary btn-block" id="btn-assign-confirm" type="button">Assign →</button>
       </div>
     </div>
   </div>
@@ -202,39 +342,27 @@
   <script src="/js/api.js?v=2"></script>
   <script src="/js/dashboard.js?v=2"></script>
   <script>
-    // ── coop hydration ──────────────────────────────────────────────
+    // coop hydration (logo, colors, subtitle)
     (async function hydrate() {
       try {
         const res  = await fetch('/api/coop');
+        if (!res.ok) return;
         const coop = await res.json();
         const name     = coop.name        || 'OddCoop';
         const color    = coop.color       || '#2d8b8b';
         const letter   = coop.logo_letter || name[0].toUpperCase();
         const market   = coop.market      || '';
         const corridor = coop.corridor    || '';
-
-        const nameEl = document.getElementById('coop-name');
-        if (nameEl) nameEl.textContent = name;
-
-        const rectEl = document.getElementById('logo-rect');
-        if (rectEl) rectEl.setAttribute('fill', color);
-
-        const letterEl = document.getElementById('logo-letter');
-        if (letterEl) letterEl.textContent = letter;
-
+        ['coop-name','login-coop-name'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = name; });
+        ['logo-rect','login-logo-rect'].forEach(id => { const el = document.getElementById(id); if (el) el.setAttribute('fill', color); });
+        ['logo-letter','login-logo-letter'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = letter; });
         document.title = 'Dashboard — ' + name;
-
         const meta = document.getElementById('meta-theme-color');
         if (meta) meta.setAttribute('content', color);
-
         document.documentElement.style.setProperty('--brand', color);
-
         const sub = document.getElementById('view-sub');
-        if (sub) {
-          const parts = [market, corridor].filter(Boolean);
-          sub.textContent = parts.length ? parts.join(' · ') : name;
-        }
-      } catch (e) { console.warn('dashboard coop hydration failed', e); }
+        if (sub) { const parts = [market, corridor].filter(Boolean); sub.textContent = parts.length ? parts.join(' · ') : name; }
+      } catch (e) { console.warn('coop hydration failed', e); }
     })();
   </script>
 </body>
