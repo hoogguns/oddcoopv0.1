@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="{{COOP_COLOR}}" />
-  <title>Driver portal — {{COOP_NAME}}</title>
+  <meta name="theme-color" content="#2d8b8b" id="meta-theme-color" />
+  <title>Driver portal</title>
   <link rel="stylesheet" href="/css/site.css?v=2" />
 </head>
 <body class="app-body">
@@ -15,11 +15,11 @@
       <a class="brand" href="/">
         <div class="brand-icon">
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="{{COOP_COLOR}}"/>
-            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700">{{COOP_LOGO_LETTER}}</text>
+            <rect width="32" height="32" rx="8" fill="#2d8b8b" id="logo-rect-login"/>
+            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700" id="logo-letter-login">O</text>
           </svg>
         </div>
-        {{COOP_NAME}}
+        <span id="coop-name-login">OddCoop</span>
       </a>
       <h1>Driver portal</h1>
       <p class="sub">Claim pickups, run device checks, mark deliveries complete.</p>
@@ -29,11 +29,16 @@
           <input name="email" type="email" required placeholder="sam.driver@oddcoop.demo" />
         </label>
         <label class="field">Password
-          <input name="password" type="password" required placeholder="driver1234" />
+          <div style="position:relative">
+            <input name="password" type="password" required placeholder="driver1234" id="pw-input" />
+            <button type="button" id="pw-toggle" style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0" aria-label="Show password">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
         </label>
         <button class="btn btn-primary btn-block" type="submit">Sign in</button>
       </form>
-      <p class="text-sm text-muted mt-1"><a href="/">Marketing site</a> · <a href="/partners">Partner info</a></p>
+      <p class="text-sm text-muted mt-1"><a href="/">Marketing site</a> &middot; <a href="/partners">Partner info</a></p>
     </div>
   </div>
 
@@ -43,11 +48,11 @@
       <a class="brand" href="/">
         <div class="brand-icon">
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="{{COOP_COLOR}}"/>
-            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700">{{COOP_LOGO_LETTER}}</text>
+            <rect width="32" height="32" rx="8" fill="#2d8b8b" id="logo-rect-app"/>
+            <text x="16" y="22" text-anchor="middle" fill="white" font-size="16" font-family="sans-serif" font-weight="700" id="logo-letter-app">O</text>
           </svg>
         </div>
-        {{COOP_NAME}}
+        <span id="coop-name-app">OddCoop</span>
       </a>
       <nav class="side-nav">
         <a href="#" class="active" data-view="available">Available orders</a>
@@ -67,7 +72,7 @@
       <header class="app-top">
         <div>
           <h1 id="view-title">Available pickups</h1>
-          <p class="text-sm text-muted">{{COOP_MARKET}} · Claim an order to get started</p>
+          <p class="text-sm text-muted" id="app-sub">Claim an order to get started</p>
         </div>
         <div class="row">
           <button class="btn btn-soft btn-sm" id="btn-go-available" type="button">Set available</button>
@@ -103,7 +108,7 @@
             </div>
             <div class="panel" id="active-detail">
               <div class="panel-head"><h2>Order detail</h2></div>
-              <div class="panel-body pad"><p class="text-sm text-muted">Select an order.</p></div>
+              <div class="panel-body pad" id="job-body"><p class="text-sm text-muted">Select an order.</p></div>
             </div>
           </div>
         </section>
@@ -162,5 +167,37 @@
 
   <script src="/js/api.js?v=2"></script>
   <script src="/js/drivers.js?v=2"></script>
+  <script>
+    // ── coop hydration ─────────────────────────────────────────────
+    (async function hydrate() {
+      try {
+        const res  = await fetch('/api/coop');
+        const coop = await res.json();
+        const name   = coop.name        || 'OddCoop';
+        const color  = coop.color       || '#2d8b8b';
+        const letter = coop.logo_letter || name[0].toUpperCase();
+        const market = coop.market      || '';
+
+        document.querySelectorAll('#coop-name-login, #coop-name-app').forEach((el) => el.textContent = name);
+        document.querySelectorAll('#logo-rect-login, #logo-rect-app').forEach((el) => el.setAttribute('fill', color));
+        document.querySelectorAll('#logo-letter-login, #logo-letter-app').forEach((el) => el.textContent = letter);
+        document.title = 'Driver portal — ' + name;
+        const meta = document.getElementById('meta-theme-color');
+        if (meta) meta.setAttribute('content', color);
+        document.documentElement.style.setProperty('--brand', color);
+        const sub = document.getElementById('app-sub');
+        if (sub && market) sub.textContent = market + ' · Claim an order to get started';
+      } catch (e) { console.warn('driver coop hydration failed', e); }
+    })();
+
+    // ── password toggle ───────────────────────────────────────────
+    const pwToggle = document.getElementById('pw-toggle');
+    const pwInput  = document.getElementById('pw-input');
+    if (pwToggle && pwInput) {
+      pwToggle.addEventListener('click', () => {
+        pwInput.type = pwInput.type === 'password' ? 'text' : 'password';
+      });
+    }
+  </script>
 </body>
 </html>
