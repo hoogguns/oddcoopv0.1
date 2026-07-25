@@ -39,8 +39,8 @@ app.get('/dashboard', (_req, res) => res.sendFile(path.join(__dirname, '..', 'pu
 app.get('/drivers',   (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'drivers.html')));
 app.get('/join',      (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'join.html')));
 
-// fallback → login
-app.get('*', (_req, res) => res.redirect('/login'));
+// fallback → login (app.use avoids Express 5 wildcard path-to-regexp crash)
+app.use((_req, res) => res.redirect('/login'));
 
 app.listen(PORT, () => {
   console.log(`OddCoop running on http://localhost:${PORT}`);
