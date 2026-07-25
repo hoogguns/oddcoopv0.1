@@ -5,6 +5,43 @@
   let selectedId = null;
   let driversCache = [];
 
+  // ── session helpers (thin wrappers that match api.js shape) ──────────────
+  const SESSION_KEY_PARTNER = 'oc_partner';
+  function setSession(role, token, user) {
+    API.setToken(token);
+    sessionStorage.setItem(SESSION_KEY_PARTNER, JSON.stringify(user));
+  }
+  function getUser() {
+    try { return JSON.parse(sessionStorage.getItem(SESSION_KEY_PARTNER)); } catch { return null; }
+  }
+  function clearSession() {
+    API.clearToken();
+    sessionStorage.removeItem(SESSION_KEY_PARTNER);
+  }
+
+  // ── coop header hydration ────────────────────────────────────────────────
+  async function hydrateCoop() {
+    try {
+      const coop = await API.coop();
+      const tokens = {
+        '{{COOP_NAME}}':      coop.name     || 'OddCoop',
+        '{{COOP_MARKET}}':   coop.market   || '',
+        '{{COOP_CORRIDOR}}': coop.corridor || '',
+      };
+      function walk(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          let v = node.nodeValue, changed = false;
+          for (const [t, r] of Object.entries(tokens)) if (v.includes(t)) { v = v.split(t).join(r); changed = true; }
+          if (changed) node.nodeValue = v;
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          for (const child of node.childNodes) walk(child);
+        }
+      }
+      walk(document.body);
+      if (coop.color) document.documentElement.style.setProperty('--brand', coop.color);
+    } catch (e) { console.warn('coop hydration', e); }
+  }
+
   function showLogin() {
     $('#login-view').classList.remove('hidden');
     $('#app-view').classList.add('hidden');
@@ -13,27 +50,32 @@
   function showApp() {
     $('#login-view').classList.add('hidden');
     $('#app-view').classList.remove('hidden');
-    const user = API.getUser('partner');
+    const user = getUser();
     if (user) {
-      $('#side-company').textContent = user.company_name || user.company || 'Partner';
-      $('#side-plan').textContent = (user.plan || 'pilot') + ' plan';
-      $('#side-email').textContent = user.email || '';
-      if (user.api_key) $('#api-key').value = user.api_key;
+      const nameEl   = $('#side-company');
+      const planEl   = $('#side-plan');
+      const emailEl  = $('#side-email');
+      const keyEl    = $('#api-key');
+      if (nameEl)  nameEl.textContent  = user.company_name || user.company || 'Partner';
+      if (planEl)  planEl.textContent  = (user.plan || 'pilot') + ' plan';
+      if (emailEl) emailEl.textContent = user.email || '';
+      if (keyEl && user.api_key) keyEl.value = user.api_key;
     }
   }
 
   async function bootstrap() {
-    if (!API.getToken('partner')) {
+    if (!API.getToken()) {
       showLogin();
       return;
     }
     try {
-      const me = await API.request('/api/auth/partner/me');
-      API.setSession('partner', API.getToken('partner'), me.partner);
+      const me = await API.me();
+      setSession('partner', API.getToken(), me.partner);
       showApp();
+      await hydrateCoop();
       await refreshAll();
     } catch {
-      API.clearSession('partner');
+      clearSession();
       showLogin();
     }
   }
@@ -44,376 +86,262 @@
   }
 
   async function loadStats() {
-    const s = await API.partnerStats();
-    $('#s-open').textContent = s.open_orders;
-    $('#s-total').textContent = s.total_orders;
-    $('#s-volume').textContent = money(s.total_volume);
-    $('#s-paid').textContent = s.paid_today.count;
-    $('#s-paid-vol').textContent = money(s.paid_today.volume) + ' volume';
-    $('#s-cycle').textContent = s.avg_cycle_hours != null ? s.avg_cycle_hours + 'h' : '—';
+    try {
+      const s = await API.partnerStats();
+      if ($('#s-open'))   $('#s-open').textContent   = s.open_orders;
+      if ($('#s-total'))  $('#s-total').textContent  = s.total_orders;
+      if ($('#s-volume')) $('#s-volume').textContent = money(s.total_volume);
+      if ($('#s-paid'))   $('#s-paid').textContent   = s.paid_today.count;
+      if ($('#s-paid-vol')) $('#s-paid-vol').textContent = money(s.paid_today.volume) + ' volume';
+      if ($('#s-cycle'))  $('#s-cycle').textContent  = s.avg_cycle_hours != null ? s.avg_cycle_hours + 'h' : '—';
+    } catch (e) { console.warn('loadStats', e); }
   }
 
-  function money2(n) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(Number(n) || 0);
+  function money(n) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(n) || 0);
   }
 
   async function loadEconomicsLive() {
     try {
       const e = await API.partnerEconomics();
-      const inv = e.partner_invoice;
+      const inv  = e.partner_invoice;
       const prof = e.platform_profit;
-      const act = e.activity;
+      const act  = e.activity;
 
-      if ($('#profit-period')) $('#profit-period').textContent = e.period_label || e.period;
+      if ($('#profit-period'))   $('#profit-period').textContent   = e.period_label || e.period;
       if ($('#m-invoice')) {
-        $('#m-invoice').textContent = money2(inv.total);
-        $('#m-invoice-sub').textContent = `${inv.plan.name} · sub ${money2(inv.platform_fee)} · overage ${money2(inv.overage_fees || 0)}`;
+        $('#m-invoice').textContent    = money(inv.total);
+        $('#m-invoice-sub').textContent = `${inv.plan.name} · sub ${money(inv.platform_fee)} · overage ${money(inv.overage_fees || 0)}`;
       }
       if ($('#m-profit')) {
-        $('#m-profit').textContent = money2(prof.contribution);
-        $('#m-profit').style.color = prof.contribution >= 0 ? 'var(--good)' : 'var(--bad)';
-        $('#m-profit-sub').textContent = `Platform COGS ${money2(prof.cogs_total)} (hosting/support)`;
+        $('#m-profit').textContent    = money(prof.contribution);
+        $('#m-profit').style.color    = prof.contribution >= 0 ? 'var(--good)' : 'var(--bad)';
+        $('#m-profit-sub').textContent = `Platform COGS ${money(prof.cogs_total)} (hosting/support)`;
       }
       if ($('#m-pickups')) {
-        $('#m-pickups').textContent = String(act.completed_pickups);
+        $('#m-pickups').textContent    = String(act.completed_pickups);
         $('#m-pickups-sub').textContent = `${act.orders_created} created · ${act.paid} paid · ${act.mismatch} mismatch`;
       }
       if ($('#m-unit')) {
-        $('#m-unit').textContent = prof.margin_pct == null ? '—' : `${prof.margin_pct.toFixed(0)}%`;
-        $('#m-unit-sub').textContent =
-          prof.margin_pct == null ? 'No SaaS bill yet' : 'Contribution margin on SaaS revenue';
+        $('#m-unit').textContent    = prof.margin_pct == null ? '—' : `${prof.margin_pct.toFixed(0)}%`;
+        $('#m-unit-sub').textContent = prof.margin_pct == null ? 'No SaaS bill yet' : 'Contribution margin on SaaS revenue';
         if (prof.margin_pct != null) $('#m-unit').style.color = prof.margin_pct >= 0 ? 'var(--good)' : 'var(--bad)';
       }
-
-      // Economics tab live block
       if ($('#e-live-invoice')) {
-        $('#e-live-invoice').textContent = money2(inv.total);
+        $('#e-live-invoice').textContent    = money(inv.total);
         $('#e-live-invoice-sub').textContent = `What this partner pays PurCheaper (${inv.plan.name})`;
-        $('#e-live-profit').textContent = money2(prof.contribution);
-        $('#e-live-profit').style.color = prof.contribution >= 0 ? 'var(--good)' : 'var(--bad)';
-        $('#e-live-profit-sub').textContent = 'Your platform profit on their volume (est.)';
+        $('#e-live-profit').textContent     = money(prof.contribution);
+        $('#e-live-profit').style.color     = prof.contribution >= 0 ? 'var(--good)' : 'var(--bad)';
+        $('#e-live-profit-sub').textContent  = 'Your platform profit on their volume (est.)';
         $('#e-live-breakdown').innerHTML = [
           row('Period', e.period_label || e.period),
           row('Model', inv.model || 'saas_subscription'),
           row('Plan', inv.plan.name),
           row('Orders completed', String(act.completed_pickups)),
-          row('Subscription', money2(inv.platform_fee)),
-          row('Overage fees', money2(inv.overage_fees || 0)),
-          row('Partner SaaS bill', money2(inv.total)),
-          row('Platform COGS (hosting/support)', money2(prof.cogs_total)),
-          row('PurCheaper contribution', money2(prof.contribution)),
+          row('Subscription', money(inv.platform_fee)),
+          row('Overage fees', money(inv.overage_fees || 0)),
+          row('Partner SaaS bill', money(inv.total)),
+          row('Platform COGS (hosting/support)', money(prof.cogs_total)),
+          row('PurCheaper contribution', money(prof.contribution)),
         ].join('');
       }
       return e;
-    } catch (err) {
-      console.warn('economics', err);
-      return null;
-    }
+    } catch (err) { console.warn('economics', err); return null; }
   }
 
   async function loadOrders() {
-    const status = $('#status-filter').value;
-    const q = $('#q').value.trim();
-    const params = {};
-    if (status) params.status = status;
-    if (q) params.q = q;
-    const { orders, total } = await API.partnerOrders(params);
-    $('#order-count').textContent = total + ' order' + (total === 1 ? '' : 's');
-    const body = $('#orders-body');
-    body.innerHTML = '';
-    if (!orders.length) {
-      $('#orders-empty').classList.remove('hidden');
-      return;
-    }
-    $('#orders-empty').classList.add('hidden');
-    for (const o of orders) {
-      const tr = document.createElement('tr');
-      tr.style.cursor = 'pointer';
-      if (o.id === selectedId) tr.style.background = 'var(--brand-soft)';
-      tr.innerHTML = `
-        <td>
-          <div class="mono">${o.external_ref || o.id.slice(0, 8)}</div>
-          <strong>${escapeHtml(o.device_brand)} ${escapeHtml(o.device_model)}</strong>
-          <div class="muted">${escapeHtml(o.device_storage || '')} · ${escapeHtml(o.device_condition)}</div>
-        </td>
-        <td>
-          ${escapeHtml(o.seller_name)}
-          <div class="muted">${escapeHtml(o.pickup_city)}</div>
-        </td>
-        <td class="amount">${money(o.quoted_amount)}</td>
-        <td>${statusChip(o.status)}</td>
-        <td class="muted">${escapeHtml(o.driver_name || '—')}</td>
-        <td><button class="btn btn-ghost btn-sm" type="button" data-open="${o.id}">View</button></td>
-      `;
-      tr.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
-        showDetail(o.id);
-      });
-      tr.querySelector('[data-open]').addEventListener('click', () => showDetail(o.id));
-      body.appendChild(tr);
-    }
+    try {
+      const status = $('#status-filter') && $('#status-filter').value;
+      const q = $('#q') && $('#q').value.trim();
+      const params = {};
+      if (status) params.status = status;
+      if (q) params.q = q;
+      const { orders, total } = await API.orders(params);
+      if ($('#order-count')) $('#order-count').textContent = total + ' order' + (total === 1 ? '' : 's');
+      const body = $('#orders-body');
+      body.innerHTML = '';
+      if (!orders.length) { $('#orders-empty') && $('#orders-empty').classList.remove('hidden'); return; }
+      $('#orders-empty') && $('#orders-empty').classList.add('hidden');
+      for (const o of orders) {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        if (o.id === selectedId) tr.style.background = 'var(--brand-soft)';
+        tr.innerHTML = `
+          <td>
+            <div class="mono">${escapeHtml(o.external_ref || o.id.slice(0, 8))}</div>
+            <strong>${escapeHtml(o.device_brand)} ${escapeHtml(o.device_model)}</strong>
+            <div class="muted">${escapeHtml(o.device_storage || '')} · ${escapeHtml(o.device_condition)}</div>
+          </td>
+          <td>${escapeHtml(o.seller_name)}<div class="muted">${escapeHtml(o.pickup_city)}</div></td>
+          <td class="amount">${money(o.quoted_amount)}</td>
+          <td>${statusChip(o.status)}</td>
+          <td class="muted">${escapeHtml(o.driver_name || '—')}</td>
+          <td><button class="btn btn-ghost btn-sm" type="button" data-open="${o.id}">View</button></td>
+        `;
+        tr.addEventListener('click', (e) => { if (e.target.closest('button')) return; showDetail(o.id); });
+        tr.querySelector('[data-open]').addEventListener('click', () => showDetail(o.id));
+        body.appendChild(tr);
+      }
+    } catch (e) { console.warn('loadOrders', e); }
   }
 
   async function showDetail(id) {
     selectedId = id;
-    const { order, events } = await API.partnerOrder(id);
-    $('#detail-status').innerHTML = statusChip(order.status);
-    const specs = order.expected_specs || {};
-    const verified = order.verified_specs || {};
-    const checklist = order.door_checklist || {};
-    const partnerStatuses = [
-      'pending', 'assigned', 'en_route', 'picked_up', 'verifying', 'verified',
-      'mismatch', 'paid', 'shipped', 'in_transit', 'delivered', 'cancelled',
-    ];
-    const statusOpts = partnerStatuses
-      .map((s) => `<option value="${s}" ${s === order.status ? 'selected' : ''}>${s}</option>`)
-      .join('');
+    try {
+      const { order, events } = await API.order(id);
+      $('#detail-status').innerHTML = statusChip(order.status);
+      const specs    = order.expected_specs  || {};
+      const verified = order.verified_specs  || {};
+      const checklist = order.door_checklist || {};
+      const partnerStatuses = ['pending','assigned','en_route','picked_up','verifying','verified','mismatch','paid','shipped','in_transit','delivered','cancelled'];
+      const statusOpts = partnerStatuses.map((s) => `<option value="${s}" ${s === order.status ? 'selected' : ''}>${s}</option>`).join('');
+      const actions = [];
+      if (order.status === 'verified' && !order.paid)
+        actions.push(`<button class="btn btn-accent btn-sm" type="button" id="act-pay">Release same-day pay</button>`);
+      if (['pending','assigned'].includes(order.status))
+        actions.push(`<button class="btn btn-soft btn-sm" type="button" id="act-assign">Assign driver</button>`);
+      if (!['delivered','cancelled'].includes(order.status))
+        actions.push(`<button class="btn btn-ghost btn-sm" type="button" id="act-cancel">Cancel</button>`);
 
-    const actions = [];
-    if (order.status === 'verified' && !order.paid) {
-      actions.push(`<button class="btn btn-accent btn-sm" type="button" id="act-pay">Release same-day pay</button>`);
-    }
-    if (['pending', 'assigned'].includes(order.status)) {
-      actions.push(`<button class="btn btn-soft btn-sm" type="button" id="act-assign">Assign driver</button>`);
-    }
-    if (!['delivered', 'cancelled'].includes(order.status)) {
-      actions.push(`<button class="btn btn-ghost btn-sm" type="button" id="act-cancel">Cancel</button>`);
-    }
-
-    $('#detail-body').innerHTML = `
-      <div class="stack">
-        <div class="row between">
+      $('#detail-body').innerHTML = `
+        <div class="stack">
+          <div class="row between">
+            <div><strong>${escapeHtml(order.device_brand)} ${escapeHtml(order.device_model)}</strong>
+              <div class="text-sm text-muted mono">${escapeHtml(order.external_ref || order.id)}</div>
+            </div>
+            <div class="amount">${money(order.quoted_amount)}</div>
+          </div>
+          <div class="text-sm">
+            <div><strong>Seller:</strong> ${escapeHtml(order.seller_name)} · ${escapeHtml(order.seller_phone)}</div>
+            <div><strong>Pickup:</strong> ${escapeHtml(order.pickup_address)}, ${escapeHtml(order.pickup_city)} ${escapeHtml(order.pickup_zip)}</div>
+            <div><strong>Driver:</strong> ${escapeHtml(order.driver_name || 'Unassigned')} ${order.driver_code ? '(' + escapeHtml(order.driver_code) + ')' : ''}</div>
+            <div><strong>IMEI:</strong> <span class="mono">${escapeHtml(order.imei || '—')}</span></div>
+            <div><strong>Packed:</strong> ${order.packed ? 'Yes' : 'No'} · <strong>Paid:</strong> ${order.paid ? 'Yes @ ' + fmtWhen(order.paid_at) : 'No'}</div>
+          </div>
+          <div class="card" style="padding:.65rem;box-shadow:none">
+            <div class="text-sm mb-1"><strong>Update status</strong> <span class="text-muted">(partner or driver)</span></div>
+            <div class="row" style="align-items:stretch">
+              <select id="act-status" style="flex:1;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:.4rem">${statusOpts}</select>
+              <button class="btn btn-primary btn-sm" type="button" id="act-status-save">Save status</button>
+            </div>
+          </div>
+          <div class="card" style="padding:.65rem;box-shadow:none">
+            <div class="text-sm mb-1"><strong>Carrier tracking</strong> <span class="text-muted">(buyback label / parcel)</span></div>
+            <div class="form-grid" style="gap:.4rem">
+              <label class="field">Carrier
+                <select id="trk-carrier">${['','UPS','FedEx','USPS','DHL','Other'].map((c) => `<option value="${c}" ${String(order.tracking_carrier||'')===c?'selected':''}>${c||'Select…'}</option>`).join('')}</select>
+              </label>
+              <label class="field">Tracking #
+                <input id="trk-number" class="mono" value="${escapeHtml(order.tracking_number||'')}" placeholder="1Z…" />
+              </label>
+              <label class="field full">Tracking URL (optional)
+                <input id="trk-url" value="${escapeHtml(order.tracking_url||'')}" placeholder="https://…" />
+              </label>
+            </div>
+            <div class="row mt-1">
+              <button class="btn btn-soft btn-sm" type="button" id="act-tracking">Save tracking</button>
+              <label class="text-sm" style="display:flex;align-items:center;gap:.35rem"><input type="checkbox" id="trk-shipped" /> Mark shipped</label>
+              ${order.tracking_url ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(order.tracking_url)}" target="_blank" rel="noopener">Open track →</a>` : ''}
+            </div>
+          </div>
           <div>
-            <strong>${escapeHtml(order.device_brand)} ${escapeHtml(order.device_model)}</strong>
-            <div class="text-sm text-muted mono">${escapeHtml(order.external_ref || order.id)}</div>
+            <div class="text-sm"><strong>Door checklist</strong> <span class="chip chip-brand">Partner-owned</span></div>
+            <pre class="mono text-sm" style="margin:.25rem 0 0;white-space:pre-wrap;background:var(--canvas);padding:.5rem;border-radius:6px">${escapeHtml(JSON.stringify(checklist,null,2))}</pre>
           </div>
-          <div class="amount">${money(order.quoted_amount)}</div>
-        </div>
-        <div class="text-sm">
-          <div><strong>Seller:</strong> ${escapeHtml(order.seller_name)} · ${escapeHtml(order.seller_phone)}</div>
-          <div><strong>Pickup:</strong> ${escapeHtml(order.pickup_address)}, ${escapeHtml(order.pickup_city)} ${escapeHtml(order.pickup_zip)}</div>
-          <div><strong>Driver:</strong> ${escapeHtml(order.driver_name || 'Unassigned')} ${order.driver_code ? '(' + escapeHtml(order.driver_code) + ')' : ''}</div>
-          <div><strong>IMEI:</strong> <span class="mono">${escapeHtml(order.imei || '—')}</span></div>
-          <div><strong>Packed:</strong> ${order.packed ? 'Yes' : 'No'} · <strong>Paid:</strong> ${order.paid ? 'Yes @ ' + fmtWhen(order.paid_at) : 'No'}</div>
-        </div>
-
-        <div class="card" style="padding:.65rem;box-shadow:none">
-          <div class="text-sm mb-1"><strong>Update status</strong> <span class="text-muted">(partner or driver)</span></div>
-          <div class="row" style="align-items:stretch">
-            <select id="act-status" style="flex:1;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:.4rem">${statusOpts}</select>
-            <button class="btn btn-primary btn-sm" type="button" id="act-status-save">Save status</button>
+          <div>
+            <div class="text-sm"><strong>Expected specs</strong></div>
+            <pre class="mono text-sm" style="margin:.25rem 0 0;white-space:pre-wrap;background:var(--canvas);padding:.5rem;border-radius:6px">${escapeHtml(JSON.stringify(specs,null,2))}</pre>
           </div>
-        </div>
-
-        <div class="card" style="padding:.65rem;box-shadow:none">
-          <div class="text-sm mb-1"><strong>Carrier tracking</strong> <span class="text-muted">(buyback label / parcel)</span></div>
-          <div class="form-grid" style="gap:.4rem">
-            <label class="field">Carrier
-              <select id="trk-carrier">
-                ${['', 'UPS', 'FedEx', 'USPS', 'DHL', 'Other']
-                  .map(
-                    (c) =>
-                      `<option value="${c}" ${String(order.tracking_carrier || '') === c ? 'selected' : ''}>${c || 'Select…'}</option>`
-                  )
-                  .join('')}
+          ${order.verified_specs ? `<div>
+            <div class="text-sm"><strong>Door result</strong> ${order.verification_match ? statusChip('verified') : statusChip('mismatch')}</div>
+            <pre class="mono text-sm" style="margin:.25rem 0 0;white-space:pre-wrap;background:var(--canvas);padding:.5rem;border-radius:6px">${escapeHtml(JSON.stringify(verified,null,2))}</pre>
+          </div>` : ''}
+          <div class="card" style="padding:.65rem;box-shadow:none">
+            <div class="text-sm mb-1"><strong>Dispatch integration</strong> <span class="text-muted">Roadie · Shipt · fleet · webhook</span></div>
+            <div class="text-sm mb-1">Provider: <strong>${escapeHtml(order.dispatch_provider||'—')}</strong> · Ext ID: <span class="mono">${escapeHtml(order.dispatch_external_id||'—')}</span> · ${statusChip(order.dispatch_status||'none')}</div>
+            <div class="row">
+              <select id="dsp-provider" style="flex:1;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:.4rem">
+                <option value="roadie">Roadie</option>
+                <option value="shipt">Shipt</option>
+                <option value="manual">Manual / own fleet</option>
+                <option value="custom_webhook">Custom webhook</option>
               </select>
-            </label>
-            <label class="field">Tracking #
-              <input id="trk-number" class="mono" value="${escapeHtml(order.tracking_number || '')}" placeholder="1Z…" />
-            </label>
-            <label class="field full">Tracking URL (optional)
-              <input id="trk-url" value="${escapeHtml(order.tracking_url || '')}" placeholder="https://…" />
-            </label>
+              <button class="btn btn-soft btn-sm" type="button" id="act-dispatch">Send to platform</button>
+            </div>
           </div>
-          <div class="row mt-1">
-            <button class="btn btn-soft btn-sm" type="button" id="act-tracking">Save tracking</button>
-            <label class="text-sm" style="display:flex;align-items:center;gap:.35rem">
-              <input type="checkbox" id="trk-shipped" /> Mark shipped
-            </label>
-            ${
-              order.tracking_url
-                ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(order.tracking_url)}" target="_blank" rel="noopener">Open track →</a>`
-                : ''
-            }
+          <div class="row">${actions.join('')}</div>
+          <div>
+            <div class="text-sm mb-1"><strong>Event log</strong></div>
+            <div class="timeline">${(events||[]).map((ev) => `<div class="ev"><div class="dot"></div><div><strong>${escapeHtml(ev.event)}</strong><span>${fmtWhen(ev.created_at)} · ${escapeHtml(ev.actor_type||'system')}</span></div></div>`).join('')}</div>
           </div>
         </div>
+      `;
 
-        <div>
-          <div class="text-sm"><strong>Door checklist</strong> <span class="chip chip-brand">Partner-owned</span></div>
-          <pre class="mono text-sm" style="margin:.25rem 0 0;white-space:pre-wrap;background:var(--canvas);padding:.5rem;border-radius:6px">${escapeHtml(JSON.stringify(checklist, null, 2))}</pre>
-        </div>
-        <div>
-          <div class="text-sm"><strong>Expected specs</strong></div>
-          <pre class="mono text-sm" style="margin:.25rem 0 0;white-space:pre-wrap;background:var(--canvas);padding:.5rem;border-radius:6px">${escapeHtml(JSON.stringify(specs, null, 2))}</pre>
-        </div>
-        ${
-          order.verified_specs
-            ? `<div>
-                <div class="text-sm"><strong>Door result</strong> ${
-                  order.verification_match ? statusChip('verified') : statusChip('mismatch')
-                }</div>
-                <pre class="mono text-sm" style="margin:.25rem 0 0;white-space:pre-wrap;background:var(--canvas);padding:.5rem;border-radius:6px">${escapeHtml(JSON.stringify(verified, null, 2))}</pre>
-              </div>`
-            : ''
-        }
-        <div class="card" style="padding:.65rem;box-shadow:none">
-          <div class="text-sm mb-1"><strong>Dispatch integration</strong>
-            <span class="text-muted">Roadie · Shipt · fleet · webhook</span>
-          </div>
-          <div class="text-sm mb-1">
-            Provider: <strong>${escapeHtml(order.dispatch_provider || '—')}</strong>
-            · Ext ID: <span class="mono">${escapeHtml(order.dispatch_external_id || '—')}</span>
-            · ${statusChip(order.dispatch_status || 'none')}
-          </div>
-          <div class="row">
-            <select id="dsp-provider" style="flex:1;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:.4rem">
-              <option value="roadie">Roadie</option>
-              <option value="shipt">Shipt</option>
-              <option value="manual">Manual / own fleet</option>
-              <option value="custom_webhook">Custom webhook</option>
-            </select>
-            <button class="btn btn-soft btn-sm" type="button" id="act-dispatch">Send to platform</button>
-          </div>
-        </div>
-        <div class="row">${actions.join('')}</div>
-        <div>
-          <div class="text-sm mb-1"><strong>Event log</strong></div>
-          <div class="timeline">
-            ${(events || [])
-              .map(
-                (ev) => `
-              <div class="ev">
-                <div class="dot"></div>
-                <div>
-                  <strong>${escapeHtml(ev.event)}</strong>
-                  <span>${fmtWhen(ev.created_at)} · ${escapeHtml(ev.actor_type || 'system')}</span>
-                </div>
-              </div>`
-              )
-              .join('')}
-          </div>
-        </div>
-      </div>
-    `;
-
-    $('#act-status-save')?.addEventListener('click', async () => {
-      try {
-        await API.partnerStatus(order.id, $('#act-status').value);
-        await refreshAll();
-        await showDetail(order.id);
-      } catch (err) {
-        alert(err.message);
-      }
-    });
-    $('#act-tracking')?.addEventListener('click', async () => {
-      try {
-        await API.partnerTracking(order.id, {
-          tracking_carrier: $('#trk-carrier').value || null,
-          tracking_number: $('#trk-number').value || null,
-          tracking_url: $('#trk-url').value || null,
-          mark_shipped: $('#trk-shipped').checked,
-        });
-        await refreshAll();
-        await showDetail(order.id);
-      } catch (err) {
-        alert(err.message);
-      }
-    });
-    $('#act-dispatch')?.addEventListener('click', async () => {
-      try {
-        const res = await API.dispatchOrder(order.id, { provider: $('#dsp-provider').value });
-        alert(res.message || 'Dispatched');
-        await refreshAll();
-        await showDetail(order.id);
-      } catch (err) {
-        alert(err.message);
-      }
-    });
-
-    const payBtn = $('#act-pay');
-    if (payBtn) {
-      payBtn.addEventListener('click', async () => {
+      $('#act-status-save')?.addEventListener('click', async () => {
+        try { await API.updateStatus(order.id, $('#act-status').value); await refreshAll(); await showDetail(order.id); }
+        catch (err) { alert(err.message); }
+      });
+      $('#act-tracking')?.addEventListener('click', async () => {
+        try {
+          await API.updateStatus(order.id, order.status, {
+            tracking_carrier: $('#trk-carrier').value || null,
+            tracking_number:  $('#trk-number').value  || null,
+            tracking_url:     $('#trk-url').value     || null,
+            mark_shipped:     $('#trk-shipped').checked,
+          });
+          await refreshAll(); await showDetail(order.id);
+        } catch (err) { alert(err.message); }
+      });
+      $('#act-dispatch')?.addEventListener('click', async () => {
+        try {
+          const res = await API.dispatchOrder(order.id, { provider: $('#dsp-provider').value });
+          alert(res.message || 'Dispatched'); await refreshAll(); await showDetail(order.id);
+        } catch (err) { alert(err.message); }
+      });
+      $('#act-pay')?.addEventListener('click', async () => {
         if (!confirm('Release same-day payment to seller?')) return;
-        try {
-          await API.payOrder(order.id);
-          await refreshAll();
-          await showDetail(order.id);
-        } catch (err) {
-          alert(err.message);
-        }
+        try { await API.releasePayment(order.id); await refreshAll(); await showDetail(order.id); }
+        catch (err) { alert(err.message); }
       });
-    }
-    const cancelBtn = $('#act-cancel');
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', async () => {
+      $('#act-cancel')?.addEventListener('click', async () => {
         const reason = prompt('Cancel reason?', 'Cancelled by partner') || 'Cancelled by partner';
-        try {
-          await API.cancelOrder(order.id, reason);
-          await refreshAll();
-        } catch (err) {
-          alert(err.message);
-        }
+        try { await API.cancelOrder(order.id, reason); await refreshAll(); }
+        catch (err) { alert(err.message); }
       });
-    }
-    const assignBtn = $('#act-assign');
-    if (assignBtn) {
-      assignBtn.addEventListener('click', () => openAssign(order.id));
-    }
-
-    loadOrders().catch(() => {});
+      $('#act-assign')?.addEventListener('click', () => openAssign(order.id));
+      loadOrders().catch(() => {});
+    } catch (e) { console.warn('showDetail', e); }
   }
 
   async function loadDrivers() {
-    const { drivers } = await API.partnerDrivers();
-    driversCache = drivers;
-    const body = $('#drivers-body');
-    body.innerHTML = drivers
-      .map(
-        (d) => `
-      <tr>
-        <td><strong>${escapeHtml(d.name)}</strong><div class="muted">${escapeHtml(d.phone || '')}</div></td>
-        <td>${(d.zones || []).map((z) => `<span class="chip">${escapeHtml(z)}</span>`).join(' ')}</td>
-        <td>${escapeHtml(d.vehicle || '—')}</td>
-        <td class="mono">${escapeHtml(d.driver_code || '—')}</td>
-        <td>${d.rating}</td>
-        <td>${statusChip(d.status)}</td>
-      </tr>`
-      )
-      .join('');
+    try {
+      const { drivers } = await API.partnerDrivers();
+      driversCache = drivers;
+      const body = $('#drivers-body');
+      if (!body) return;
+      body.innerHTML = drivers.map((d) => `
+        <tr>
+          <td><strong>${escapeHtml(d.name)}</strong><div class="muted">${escapeHtml(d.phone||'')}</div></td>
+          <td>${(d.zones||[]).map((z) => `<span class="chip">${escapeHtml(z)}</span>`).join(' ')}</td>
+          <td>${escapeHtml(d.vehicle||'—')}</td>
+          <td class="mono">${escapeHtml(d.driver_code||'—')}</td>
+          <td>${d.rating}</td>
+          <td>${statusChip(d.status)}</td>
+        </tr>`).join('');
+    } catch (e) { console.warn('loadDrivers', e); }
   }
 
   function openAssign(orderId) {
     $('#assign-order-id').value = orderId;
     const sel = $('#assign-driver');
-    sel.innerHTML = driversCache
-      .map((d) => `<option value="${d.id}">${escapeHtml(d.name)} · ${escapeHtml(d.status)} · ${(d.zones || []).join(', ')}</option>`)
-      .join('');
+    sel.innerHTML = driversCache.map((d) => `<option value="${d.id}">${escapeHtml(d.name)} · ${escapeHtml(d.status)} · ${(d.zones||[]).join(', ')}</option>`).join('');
     $('#assign-modal').classList.add('open');
   }
 
   const PLANS = {
-    starter: {
-      name: 'Starter',
-      monthly: 99,
-      included: 200,
-      overage: 0.25,
-    },
-    growth: {
-      name: 'Growth',
-      monthly: 249,
-      included: 1500,
-      overage: 0.15,
-    },
-    network: {
-      name: 'Network',
-      monthly: 699,
-      included: 10000,
-      overage: 0.08,
-    },
+    starter: { name: 'Starter', monthly: 99,  included: 200,   overage: 0.25 },
+    growth:  { name: 'Growth',  monthly: 249, included: 1500,  overage: 0.15 },
+    network: { name: 'Network', monthly: 699, included: 10000, overage: 0.08 },
   };
 
   function num(id, fallback = 0) {
@@ -424,285 +352,213 @@
   }
 
   function row(label, value, note = '') {
-    return `<tr>
-      <td><strong>${label}</strong>${note ? `<div class="muted">${note}</div>` : ''}</td>
-      <td class="amount" style="text-align:right;white-space:nowrap">${value}</td>
-    </tr>`;
+    return `<tr><td><strong>${label}</strong>${note ? `<div class="muted">${note}</div>` : ''}</td><td class="amount" style="text-align:right;white-space:nowrap">${value}</td></tr>`;
   }
 
   function runEconomics() {
     if (!$('#econ-form')) return;
     const planKey = ($('#econ-plan') && $('#econ-plan').value) || 'growth';
     const plan = PLANS[planKey] || PLANS.growth;
-    const orders = Math.max(0, num('econ-pickups', 0));
-    const avgQuote = Math.max(0, num('econ-quote', 0));
+    const orders    = Math.max(0, num('econ-pickups', 0));
+    const avgQuote  = Math.max(0, num('econ-quote', 0));
     const marginPct = Math.min(100, Math.max(0, num('econ-margin', 0))) / 100;
-    const baseline = Math.max(0, num('econ-baseline', 0));
-    const liftPct = Math.min(100, Math.max(0, num('econ-lift', 0))) / 100;
+    const baseline  = Math.max(0, num('econ-baseline', 0));
+    const liftPct   = Math.min(100, Math.max(0, num('econ-lift', 0))) / 100;
     const mismatchPct = Math.min(100, Math.max(0, num('econ-mismatch', 0))) / 100;
-
     const overageUnits = Math.max(0, orders - plan.included);
-    const overage = overageUnits * plan.overage;
-    const saasFee = plan.monthly + overage;
-    const cpp = orders > 0 ? saasFee / orders : plan.monthly;
-    const extraCloses = baseline * liftPct;
-    const paidFraction = 1 - mismatchPct;
-    const incrementalGp = extraCloses * avgQuote * marginPct * paidFraction;
+    const overage   = overageUnits * plan.overage;
+    const saasFee   = plan.monthly + overage;
+    const cpp       = orders > 0 ? saasFee / orders : plan.monthly;
+    const extraCloses   = baseline * liftPct;
+    const incrementalGp = extraCloses * avgQuote * marginPct * (1 - mismatchPct);
     const net = incrementalGp - saasFee;
 
-    $('#econ-cost').textContent = money(saasFee);
-    $('#econ-cost-sub').textContent = plan.name + ' SaaS ' + money(plan.monthly) + ' + overage ' + money(overage);
-    $('#econ-cpp').textContent = money(Math.round(cpp));
-    $('#econ-extra').textContent = extraCloses.toFixed(1);
-    $('#econ-net').textContent = money(Math.round(net));
-    $('#econ-net-sub').textContent = net >= 0 ? 'Positive ROI on SaaS' : 'SaaS exceeds modeled lift';
-    $('#econ-net').style.color = net >= 0 ? 'var(--good)' : 'var(--bad)';
-
-    $('#econ-roi-body').innerHTML = [
-      row('Model', 'Pure SaaS subscription'),
-      row('Plan', plan.name),
-      row('Subscription / mo', money(plan.monthly)),
-      row('Included orders', String(plan.included)),
-      row('Orders this month', String(orders)),
-      row('Overage', money(overage), overageUnits + ' × $' + plan.overage),
-      row('Total SaaS cost / mo', money(Math.round(saasFee))),
-      row('Your driver/logistics cost', 'You pay (not PurCheaper)'),
-      row('Incremental GP from same-day tools', money(Math.round(incrementalGp))),
-      row('Net after SaaS', money(Math.round(net))),
-    ].join('');
-
-    $('#econ-unit-body').innerHTML = [
-      row('What PurCheaper sells', 'Software control plane'),
-      row('Dual status + tracking API', 'Included'),
-      row('Partner-owned door checklists', 'Included'),
-      row('Per-package courier fee', '$0 — not our model'),
-    ].join('');
-
-    $('#econ-verdict').textContent =
-      net >= 0
+    if ($('#econ-cost'))    $('#econ-cost').textContent    = money(saasFee);
+    if ($('#econ-cost-sub')) $('#econ-cost-sub').textContent = plan.name + ' SaaS ' + money(plan.monthly) + ' + overage ' + money(overage);
+    if ($('#econ-cpp'))     $('#econ-cpp').textContent     = money(Math.round(cpp));
+    if ($('#econ-extra'))   $('#econ-extra').textContent   = extraCloses.toFixed(1);
+    if ($('#econ-net'))  {
+      $('#econ-net').textContent  = money(Math.round(net));
+      $('#econ-net-sub') && ($('#econ-net-sub').textContent = net >= 0 ? 'Positive ROI on SaaS' : 'SaaS exceeds modeled lift');
+      $('#econ-net').style.color = net >= 0 ? 'var(--good)' : 'var(--bad)';
+    }
+    if ($('#econ-roi-body')) {
+      $('#econ-roi-body').innerHTML = [
+        row('Model', 'Pure SaaS subscription'),
+        row('Plan', plan.name),
+        row('Subscription / mo', money(plan.monthly)),
+        row('Included orders', String(plan.included)),
+        row('Orders this month', String(orders)),
+        row('Overage', money(overage), overageUnits + ' × $' + plan.overage),
+        row('Total SaaS cost / mo', money(Math.round(saasFee))),
+        row('Your driver/logistics cost', 'You pay (not PurCheaper)'),
+        row('Incremental GP from same-day tools', money(Math.round(incrementalGp))),
+        row('Net after SaaS', money(Math.round(net))),
+      ].join('');
+    }
+    if ($('#econ-unit-body')) {
+      $('#econ-unit-body').innerHTML = [
+        row('What PurCheaper sells', 'Software control plane'),
+        row('Dual status + tracking API', 'Included'),
+        row('Partner-owned door checklists', 'Included'),
+        row('Per-package courier fee', '$0 — not our model'),
+      ].join('');
+    }
+    if ($('#econ-verdict')) {
+      $('#econ-verdict').textContent = net >= 0
         ? 'SaaS can pay for itself if same-day tooling lifts closes ~' + (liftPct * 100).toFixed(0) + '% on baseline.'
         : 'At these lift assumptions the subscription costs more than incremental GP.';
-    $('#econ-verdict').style.color = net >= 0 ? 'var(--good)' : 'var(--bad)';
+      $('#econ-verdict').style.color = net >= 0 ? 'var(--good)' : 'var(--bad)';
+    }
   }
 
   function setView(name) {
     $$('.side-nav a[data-view]').forEach((a) => a.classList.toggle('active', a.dataset.view === name));
-    $('#view-orders').classList.toggle('hidden', name !== 'orders');
-    $('#view-create').classList.toggle('hidden', name !== 'create');
-    $('#view-drivers').classList.toggle('hidden', name !== 'drivers');
-    $('#view-api').classList.toggle('hidden', name !== 'api');
-    if ($('#view-economics')) $('#view-economics').classList.toggle('hidden', name !== 'economics');
-    if ($('#view-integrations')) $('#view-integrations').classList.toggle('hidden', name !== 'integrations');
-    const titles = {
-      orders: 'Purchased devices',
-      create: 'New pickup',
-      drivers: 'Driver network',
-      api: 'API access',
-      economics: 'Pricing & unit economics',
-      integrations: 'Driver platform integrations',
-    };
-    $('#view-title').textContent = titles[name] || 'Dashboard';
-    if (name === 'drivers') loadDrivers();
-    if (name === 'api') {
-      const u = API.getUser('partner');
-      if (u && u.api_key) $('#api-key').value = u.api_key;
-    }
-    if (name === 'economics') {
-      runEconomics();
-      loadEconomicsLive();
-    }
+    $('#view-orders')  && $('#view-orders').classList.toggle('hidden', name !== 'orders');
+    $('#view-create')  && $('#view-create').classList.toggle('hidden', name !== 'create');
+    $('#view-drivers') && $('#view-drivers').classList.toggle('hidden', name !== 'drivers');
+    $('#view-api')     && $('#view-api').classList.toggle('hidden', name !== 'api');
+    $('#view-economics')    && $('#view-economics').classList.toggle('hidden', name !== 'economics');
+    $('#view-integrations') && $('#view-integrations').classList.toggle('hidden', name !== 'integrations');
+    const titles = { orders: 'Orders', create: 'New pickup', drivers: 'Driver network', api: 'API access', economics: 'Pricing & unit economics', integrations: 'Driver platform integrations' };
+    if ($('#view-title')) $('#view-title').textContent = titles[name] || 'Dashboard';
+    if (name === 'drivers')      loadDrivers();
+    if (name === 'api')          { const u = getUser(); if (u && u.api_key && $('#api-key')) $('#api-key').value = u.api_key; }
+    if (name === 'economics')    { runEconomics(); loadEconomicsLive(); }
     if (name === 'integrations') loadIntegrations();
-    // Profit strip visible on main ops views
-    if ($('#profit-panel')) {
-      $('#profit-panel').classList.toggle(
-        'hidden',
-        name === 'create' || name === 'api' || name === 'integrations'
-      );
-    }
-    if ($('#stats-row')) {
-      $('#stats-row').classList.toggle(
-        'hidden',
-        name === 'economics' || name === 'create' || name === 'api' || name === 'integrations'
-      );
-    }
+    if ($('#profit-panel'))  $('#profit-panel').classList.toggle('hidden',  name === 'create' || name === 'api' || name === 'integrations');
+    if ($('#stats-row'))     $('#stats-row').classList.toggle('hidden',     name === 'economics' || name === 'create' || name === 'api' || name === 'integrations');
   }
 
   async function loadIntegrations() {
     const el = $('#integrations-list');
     if (!el) return;
     try {
-      const { integrations, note } = await API.partnerIntegrations();
-      el.innerHTML = `<p class="text-sm text-muted">${escapeHtml(note || '')}</p>` +
-        integrations
-          .map((p) => {
-            const badge =
-              p.status === 'available'
-                ? '<span class="chip chip-good">Available</span>'
-                : '<span class="chip chip-warn">Planned</span>';
-            const conn = p.connected
-              ? `<span class="chip chip-brand">Connected${p.connection && p.connection.default ? ' · default' : ''}</span>`
-              : '<span class="chip">Not connected</span>';
-            return `<article class="card">
-              <div class="row between mb-1">
-                <h3 style="margin:0">${escapeHtml(p.name)}</h3>
-                <div class="row">${badge}${conn}</div>
-              </div>
-              <p class="text-sm text-muted">${escapeHtml(p.description)}</p>
-              <p class="text-sm mt-1">Supports: ${(p.supports || []).map(escapeHtml).join(', ')}</p>
-              <div class="row mt-1">
-                ${
-                  p.status === 'available'
-                    ? `<button type="button" class="btn btn-primary btn-sm" data-connect="${p.id}">${p.connected ? 'Update connection' : 'Connect'}</button>
-                       ${p.connected ? '' : ''}`
-                    : `<button type="button" class="btn btn-ghost btn-sm" disabled>Coming soon</button>`
-                }
-                ${p.docs_url ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(p.docs_url)}" target="_blank" rel="noopener">Docs</a>` : ''}
-              </div>
-            </article>`;
-          })
-          .join('');
+      const { integrations, note } = await API.integrations();
+      el.innerHTML = `<p class="text-sm text-muted">${escapeHtml(note||'')}</p>` +
+        integrations.map((p) => {
+          const badge = p.status === 'available' ? '<span class="chip chip-good">Available</span>' : '<span class="chip chip-warn">Planned</span>';
+          const conn  = p.connected ? `<span class="chip chip-brand">Connected${p.connection && p.connection.default ? ' · default' : ''}</span>` : '<span class="chip">Not connected</span>';
+          return `<article class="card">
+            <div class="row between mb-1"><h3 style="margin:0">${escapeHtml(p.name)}</h3><div class="row">${badge}${conn}</div></div>
+            <p class="text-sm text-muted">${escapeHtml(p.description)}</p>
+            <p class="text-sm mt-1">Supports: ${(p.supports||[]).map(escapeHtml).join(', ')}</p>
+            <div class="row mt-1">
+              ${p.status === 'available'
+                ? `<button type="button" class="btn btn-primary btn-sm" data-connect="${p.id}">${p.connected ? 'Update connection' : 'Connect'}</button>`
+                : `<button type="button" class="btn btn-ghost btn-sm" disabled>Coming soon</button>`}
+              ${p.docs_url ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(p.docs_url)}" target="_blank" rel="noopener">Docs</a>` : ''}
+            </div>
+          </article>`;
+        }).join('');
       el.querySelectorAll('[data-connect]').forEach((btn) => {
         btn.addEventListener('click', async () => {
           const provider = btn.getAttribute('data-connect');
-          const api_key = provider === 'manual' ? '' : prompt('API key / token (stored for this pilot demo):', 'demo-key') || 'demo-key';
-          const is_default = confirm('Set as default dispatch provider for new jobs?');
+          const api_key  = provider === 'manual' ? '' : prompt('API key / token:', 'demo-key') || 'demo-key';
+          const is_default = confirm('Set as default dispatch provider?');
           try {
-            await API.connectIntegration(provider, {
-              api_key: api_key || null,
-              is_default,
-              external_account: provider + '-account',
+            await fetch(`/api/partner/integrations/${provider}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API.getToken() },
+              body: JSON.stringify({ api_key: api_key || null, is_default, external_account: provider + '-account' }),
             });
             await loadIntegrations();
-          } catch (err) {
-            alert(err.message);
-          }
+          } catch (err) { alert(err.message); }
         });
       });
-    } catch (err) {
-      el.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
-    }
+    } catch (err) { el.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`; }
+  }
+
+  function statusChip(s) {
+    const map = { pending: 'chip-warn', assigned: 'chip-brand', en_route: 'chip-brand', picked_up: 'chip-brand', verifying: 'chip-warn', verified: 'chip-good', mismatch: 'chip-bad', paid: 'chip-good', shipped: 'chip-good', delivered: 'chip-good', cancelled: 'chip-bad', none: '' };
+    return `<span class="chip ${map[s] || ''}">${s}</span>`;
+  }
+
+  function fmtWhen(ts) {
+    if (!ts) return '—';
+    try { return new Date(ts).toLocaleString(); } catch { return ts; }
   }
 
   function escapeHtml(s) {
-    return String(s ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // events
-  $('#login-form').addEventListener('submit', async (e) => {
+  // ── event listeners ──────────────────────────────────────────────────────
+  $('#login-form') && $('#login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const fd = new FormData(e.target);
+    const fd    = new FormData(e.target);
     const alert = $('#login-alert');
     try {
-      const res = await API.partnerLogin(fd.get('email'), fd.get('password'));
-      API.setSession('partner', res.token, res.partner);
+      const res = await API.loginPartner(fd.get('email'), fd.get('password'));
+      setSession('partner', res.token, res.partner);
       showApp();
+      await hydrateCoop();
       await refreshAll();
     } catch (err) {
-      alert.className = 'alert alert-error';
-      alert.textContent = err.message;
-      alert.classList.remove('hidden');
+      if (alert) { alert.className = 'alert alert-error'; alert.textContent = err.message; alert.classList.remove('hidden'); }
     }
   });
 
-  $('#btn-logout').addEventListener('click', () => {
-    API.clearSession('partner');
-    showLogin();
-  });
+  $('#btn-logout') && $('#btn-logout').addEventListener('click', () => { clearSession(); showLogin(); });
 
   $$('.side-nav a[data-view]').forEach((a) => {
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      setView(a.dataset.view);
-    });
+    a.addEventListener('click', (e) => { e.preventDefault(); setView(a.dataset.view); });
   });
 
-  $('#btn-new-pickup').addEventListener('click', () => setView('create'));
-  $('#btn-refresh').addEventListener('click', () => refreshAll());
-  $('#btn-filter').addEventListener('click', () => loadOrders());
-  $('#q').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') loadOrders();
-  });
+  $('#btn-new-pickup') && $('#btn-new-pickup').addEventListener('click', () => setView('create'));
+  $('#btn-refresh')    && $('#btn-refresh').addEventListener('click',    () => refreshAll());
+  $('#btn-filter')     && $('#btn-filter').addEventListener('click',     () => loadOrders());
+  $('#q')              && $('#q').addEventListener('keydown', (e) => { if (e.key === 'Enter') loadOrders(); });
 
-  $('#create-form').addEventListener('submit', async (e) => {
+  $('#create-form') && $('#create-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.target).entries());
     body.quoted_amount = Number(body.quoted_amount);
     body.expected_specs = {
-      brand: body.device_brand,
-      model: body.device_model,
-      storage: body.device_storage,
-      color: body.device_color,
-      condition: body.device_condition,
-      powers_on: true,
-      screen_cracks: body.device_condition === 'Poor',
-      account_locked: false,
+      brand: body.device_brand, model: body.device_model, storage: body.device_storage,
+      color: body.device_color, condition: body.device_condition, powers_on: true,
+      screen_cracks: body.device_condition === 'Poor', account_locked: false,
     };
-    const alert = $('#create-alert');
+    const alertEl = $('#create-alert');
     try {
       const { order } = await API.createOrder(body);
-      alert.className = 'alert alert-ok';
-      alert.textContent = 'Order created: ' + (order.external_ref || order.id);
-      alert.classList.remove('hidden');
+      if (alertEl) { alertEl.className = 'alert alert-ok'; alertEl.textContent = 'Order created: ' + (order.external_ref || order.id); alertEl.classList.remove('hidden'); }
       e.target.reset();
       setView('orders');
       selectedId = order.id;
       await refreshAll();
     } catch (err) {
-      alert.className = 'alert alert-error';
-      alert.textContent = err.message;
-      alert.classList.remove('hidden');
+      if (alertEl) { alertEl.className = 'alert alert-error'; alertEl.textContent = err.message; alertEl.classList.remove('hidden'); }
     }
   });
 
-  $('#btn-copy-key').addEventListener('click', async () => {
-    const v = $('#api-key').value;
+  $('#btn-copy-key') && $('#btn-copy-key').addEventListener('click', async () => {
+    const v = $('#api-key') && $('#api-key').value;
     if (!v) return;
     await navigator.clipboard.writeText(v);
     $('#btn-copy-key').textContent = 'Copied';
     setTimeout(() => ($('#btn-copy-key').textContent = 'Copy key'), 1200);
   });
 
-  $$('#assign-modal [data-close]').forEach((b) =>
-    b.addEventListener('click', () => $('#assign-modal').classList.remove('open'))
-  );
-  $('#btn-assign-confirm').addEventListener('click', async () => {
-    const orderId = $('#assign-order-id').value;
+  $$('#assign-modal [data-close]').forEach((b) => b.addEventListener('click', () => $('#assign-modal').classList.remove('open')));
+  $('#btn-assign-confirm') && $('#btn-assign-confirm').addEventListener('click', async () => {
+    const orderId  = $('#assign-order-id').value;
     const driverId = $('#assign-driver').value;
-    try {
-      await API.assignOrder(orderId, driverId);
-      $('#assign-modal').classList.remove('open');
-      await refreshAll();
-    } catch (err) {
-      alert(err.message);
-    }
+    try { await API.assignDriver(orderId, driverId); $('#assign-modal').classList.remove('open'); await refreshAll(); }
+    catch (err) { alert(err.message); }
   });
 
-  // Economics calculator live updates
-  if ($('#econ-form')) {
-    $('#econ-form').addEventListener('input', runEconomics);
-    $('#econ-form').addEventListener('change', runEconomics);
-  }
-  if ($('#btn-econ-refresh')) {
-    $('#btn-econ-refresh').addEventListener('click', () => loadEconomicsLive());
-  }
-  // Deep-link helper from profit panel
+  if ($('#econ-form')) { $('#econ-form').addEventListener('input', runEconomics); $('#econ-form').addEventListener('change', runEconomics); }
+  if ($('#btn-econ-refresh')) $('#btn-econ-refresh').addEventListener('click', () => loadEconomicsLive());
+
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a[href="#economics"]');
-    if (a) {
-      e.preventDefault();
-      setView('economics');
-      location.hash = 'economics';
-    }
+    if (a) { e.preventDefault(); setView('economics'); location.hash = 'economics'; }
   });
 
-  // Deep link: /dashboard#economics
   function routeHash() {
     const h = (location.hash || '').replace(/^#/, '');
-    if (h === 'economics' && API.getToken('partner')) setView('economics');
+    if (h === 'economics' && API.getToken()) setView('economics');
   }
   window.addEventListener('hashchange', routeHash);
 
