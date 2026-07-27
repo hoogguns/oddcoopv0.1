@@ -3,8 +3,109 @@ const path = require('path');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'oddcoop.json');
 
+// ── Schema defaults ──────────────────────────────────────────────────────────
+
+const ORDER_DEFAULTS = () => ({
+  // ── existing fields ──
+  id: null,
+  partner_id: null,
+  driver_id: null,
+  external_ref: null,
+  status: 'pending',
+  seller_name: null,
+  seller_phone: null,
+  seller_email: null,
+  pickup_address: null,
+  pickup_city: null,
+  pickup_zip: null,
+  pickup_lat: null,
+  pickup_lng: null,
+  device_brand: null,
+  device_model: null,
+  device_storage: null,
+  device_color: null,
+  device_condition: null,
+  imei: null,
+  serial_number: null,
+  quoted_amount: 0,
+  currency: 'USD',
+  expected_specs: null,
+  verified_specs: null,
+  verification_notes: null,
+  verification_match: null,
+  window_start: null,
+  window_end: null,
+  tracking_number: null,
+  tracking_carrier: null,
+  tracking_url: null,
+  door_checklist: null,
+  checklist_template_id: null,
+  packed: 0,
+  packed_at: null,
+  paid: 0,
+  paid_at: null,
+  payment_method: null,
+  payment_ref: null,
+  cancel_reason: null,
+  status_notes: null,
+  dispatch_provider: null,
+  dispatch_external_id: null,
+  dispatch_status: null,
+  created_at: null,
+  updated_at: null,
+  // ── NEW: cross-coop transaction fields ──
+  // Coop A = buying_coop_id (alias of partner_id, explicit for clarity)
+  // Coop R = pickup_coop_slug / pickup_coop_id (territory owner)
+  buying_coop_id: null,           // partner_id of the purchasing coop (Coop A)
+  pickup_coop_slug: null,         // slug of the territory coop (Coop R)
+  pickup_coop_id: null,           // partner_id of Coop R (resolved from slug)
+  coop_accept_required: 0,        // 1 when cross-coop txn requires Coop R acceptance
+  pickup_coop_accepted_at: null,  // ISO timestamp when Coop R formally accepted
+  // ── NEW: dual-offer pricing ──
+  seller_offer_standard: null,    // full mail-in quote (e.g. $455)
+  seller_offer_sameday: null,     // discounted sameday payout (e.g. $344)
+  seller_chose_sameday: 0,        // 1 if seller opted for sameday
+  payment_method_seller: null,    // 'venmo'|'zelle'|'cashapp'|'ach'|'check'
+  // ── NEW: payment deadline & standing ──
+  payment_deadline_at: null,      // 1hr after inspection_passed_at
+  payment_late_strikes: 0,        // incremented if Coop A misses deadline
+  // ── NEW: IMEI gate ──
+  imei_attempts: 0,               // how many times driver has tried to enter IMEI
+  imei_locked: 0,                 // 1 after 8 failed attempts → order auto-cancelled
+  // ── NEW: driver inspection sign-off ──
+  inspection_passed_at: null,     // when driver submits 'Device Match'
+  driver_signature: null,         // JSON: { name, signed_at, checkboxes[] }
+  // ── NEW: shipping label (Coop A uploads / on-demand from carrier API) ──
+  shipping_label_url: null,       // pre-signed URL or base64 of label PDF
+  shipping_carrier_preference: null, // 'usps'|'ups'|'fedex' (Coop A default)
+  tracking_number_outbound: null, // outbound tracking (distinct from inbound)
+});
+
+const PARTNER_DEFAULTS = () => ({
+  id: null,
+  company_name: null,
+  contact_name: null,
+  email: null,
+  password_hash: null,
+  phone: null,
+  website: null,
+  api_key: null,
+  plan: 'pilot',
+  active: 1,
+  created_at: null,
+  // ── NEW: coop standing & enforcement ──
+  coop_standing: 'good',          // 'good'|'probation'|'suspended'
+  late_payment_strikes: 0,        // incremented per missed 1hr payment window
+  probation_at: null,             // ISO timestamp when placed on probation
+  suspended_at: null,             // ISO timestamp when suspended
+  // ── NEW: notification & territory ──
+  notify_url: null,               // webhook URL for cross-coop order pings
+  territory_zip_codes: '[]',      // JSON array of ZIP codes this coop services
+});
+
 const EMPTY = () => ({
   tenants: [],
+  coops: [],                      // registered OddCoop members (dynamic, from /api/coop/register)
   partners: [],
   drivers: [],
   orders: [],
@@ -14,6 +115,8 @@ const EMPTY = () => ({
   partner_integrations: [],
   dispatch_jobs: [],
 });
+
+// ── File helpers ─────────────────────────────────────────────────────────────
 
 function ensureDir(filePath) {
   const dir = path.dirname(filePath);
@@ -28,7 +131,9 @@ function load() {
     return data;
   }
   const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+  // Back-fill top-level collections added in later migrations
   if (!raw.tenants) raw.tenants = [];
+  if (!raw.coops) raw.coops = [];
   return raw;
 }
 
@@ -46,8 +151,34 @@ function matchLike(value, pattern) {
   return String(value ?? '').toLowerCase().includes(raw.toLowerCase());
 }
 
+// ── Migration: back-fill new fields on existing rows ─────────────────────────
+// Called once at startup. Safe to run repeatedly — only fills missing keys.
+
+function migrate(data) {
+  let dirty = false;
+
+  const orderDefs = ORDER_DEFAULTS();
+  for (const o of data.orders) {
+    for (const [k, v] of Object.entries(orderDefs)) {
+      if (!(k in o)) { o[k] = v; dirty = true; }
+    }
+  }
+
+  const partnerDefs = PARTNER_DEFAULTS();
+  for (const p of data.partners) {
+    for (const [k, v] of Object.entries(partnerDefs)) {
+      if (!(k in p)) { p[k] = v; dirty = true; }
+    }
+  }
+
+  if (dirty) save(data);
+  return data;
+}
+
+// ── DB factory ───────────────────────────────────────────────────────────────
+
 function createDb() {
-  let data = load();
+  let data = migrate(load());
 
   function persist() { save(data); }
 
@@ -71,6 +202,8 @@ function createDb() {
     pragma() {},
   };
 
+  // ── execRun ──────────────────────────────────────────────────────────────
+
   function execRun(sql, params) {
     // Named-param object (single object arg)
     if (params.length === 1 && params[0] && typeof params[0] === 'object' && !Array.isArray(params[0])) {
@@ -87,7 +220,13 @@ function createDb() {
     if (/^INSERT (OR IGNORE )?INTO partners/i.test(sql)) {
       const [id, company_name, contact_name, email, password_hash, phone, website, api_key, plan] = params;
       if (data.partners.find((p) => p.id === id)) return { changes: 0 };
-      data.partners.push({ id, company_name, contact_name, email, password_hash, phone, website, api_key, plan: plan || 'pilot', active: 1, created_at: nowIso() });
+      data.partners.push({
+        ...PARTNER_DEFAULTS(),
+        id, company_name, contact_name, email, password_hash, phone, website, api_key,
+        plan: plan || 'pilot',
+        active: 1,
+        created_at: nowIso(),
+      });
       persist();
       return { changes: 1 };
     }
@@ -96,9 +235,27 @@ function createDb() {
       return { changes: 1 };
     }
     if (/^INSERT (OR IGNORE )?INTO orders \(/i.test(sql)) {
-      const [id, partner_id, external_ref, seller_name, seller_phone, seller_email, pickup_address, pickup_city, pickup_zip, pickup_lat, pickup_lng, device_brand, device_model, device_storage, device_color, device_condition, imei, serial_number, quoted_amount, currency, expected_specs, window_start, window_end] = params;
+      const [
+        id, partner_id, external_ref, seller_name, seller_phone, seller_email,
+        pickup_address, pickup_city, pickup_zip, pickup_lat, pickup_lng,
+        device_brand, device_model, device_storage, device_color, device_condition,
+        imei, serial_number, quoted_amount, currency, expected_specs,
+        window_start, window_end,
+      ] = params;
       if (data.orders.find((o) => o.id === id)) return { changes: 0 };
-      data.orders.push({ id, partner_id, driver_id: null, external_ref, status: 'pending', seller_name, seller_phone, seller_email, pickup_address, pickup_city, pickup_zip, pickup_lat, pickup_lng, device_brand, device_model, device_storage, device_color, device_condition, imei, serial_number, quoted_amount, currency: currency || 'USD', expected_specs, verified_specs: null, verification_notes: null, verification_match: null, window_start, window_end, packed: 0, packed_at: null, paid: 0, paid_at: null, payment_method: null, payment_ref: null, cancel_reason: null, created_at: nowIso(), updated_at: nowIso() });
+      data.orders.push({
+        ...ORDER_DEFAULTS(),
+        id, partner_id, external_ref, seller_name, seller_phone, seller_email,
+        pickup_address, pickup_city, pickup_zip, pickup_lat, pickup_lng,
+        device_brand, device_model, device_storage, device_color, device_condition,
+        imei, serial_number,
+        quoted_amount: Number(quoted_amount || 0),
+        currency: currency || 'USD',
+        expected_specs,
+        window_start, window_end,
+        created_at: nowIso(),
+        updated_at: nowIso(),
+      });
       persist();
       return { changes: 1 };
     }
@@ -130,7 +287,16 @@ function createDb() {
     if (/^UPDATE orders SET status = \?, verified_specs/i.test(sql)) {
       const [status, verified_specs, verification_notes, verification_match, packed, packedFlag, id] = params;
       const o = data.orders.find((x) => x.id === id);
-      if (o) { o.status = status; o.verified_specs = verified_specs; o.verification_notes = verification_notes; o.verification_match = verification_match; o.packed = packed; if (packedFlag === 1) o.packed_at = nowIso(); o.updated_at = nowIso(); persist(); }
+      if (o) {
+        o.status = status;
+        o.verified_specs = verified_specs;
+        o.verification_notes = verification_notes;
+        o.verification_match = verification_match;
+        o.packed = packed;
+        if (packedFlag === 1) o.packed_at = nowIso();
+        o.updated_at = nowIso();
+        persist();
+      }
       return { changes: o ? 1 : 0 };
     }
     if (/^UPDATE orders SET\s+status = 'paid'/i.test(sql) || /status = 'paid', paid = 1/i.test(sql)) {
@@ -152,25 +318,55 @@ function createDb() {
       persist();
       return { changes: 1 };
     }
+    // ── Partner standing update ──
+    if (/^UPDATE partners SET.*coop_standing/i.test(sql)) {
+      const oId = params[params.length - 1];
+      const p = data.partners.find((x) => x.id === oId);
+      if (!p) return { changes: 0 };
+      if (/late_payment_strikes/.test(sql)) p.late_payment_strikes = (p.late_payment_strikes || 0) + 1;
+      if (/probation_at/.test(sql)) { p.coop_standing = 'probation'; p.probation_at = nowIso(); }
+      if (/suspended_at/.test(sql)) { p.coop_standing = 'suspended'; p.suspended_at = nowIso(); }
+      p.updated_at = nowIso();
+      persist();
+      return { changes: 1 };
+    }
     throw new Error('Unsupported SQL run: ' + sql.slice(0, 120));
   }
+
+  // ── execRunNamed ─────────────────────────────────────────────────────────
 
   function execRunNamed(sql, obj) {
     if (/INSERT (OR IGNORE )?INTO partners/i.test(sql)) {
       if (data.partners.find((p) => p.id === obj.id)) return { changes: 0 };
-      data.partners.push({ active: 1, created_at: nowIso(), ...obj });
+      data.partners.push({ ...PARTNER_DEFAULTS(), active: 1, created_at: nowIso(), ...obj });
       persist();
       return { changes: 1 };
     }
     if (/INSERT (OR IGNORE )?INTO drivers/i.test(sql)) {
       if (data.drivers.find((d) => d.id === obj.id)) return { changes: 0 };
       data.drivers.push({ created_at: nowIso(), ...obj });
-      persist();  // <-- was missing, drivers were never written to disk
+      persist();
       return { changes: 1 };
     }
     if (/INSERT (OR IGNORE )?INTO orders/i.test(sql)) {
       if (data.orders.find((o) => o.id === obj.id)) return { changes: 0 };
-      data.orders.push({ packed: 0, paid: 0, paid_at: null, payment_method: null, payment_ref: null, verified_specs: null, verification_notes: null, verification_match: null, cancel_reason: null, serial_number: null, currency: 'USD', created_at: nowIso(), updated_at: nowIso(), ...obj });
+      data.orders.push({
+        ...ORDER_DEFAULTS(),
+        created_at: nowIso(),
+        updated_at: nowIso(),
+        ...obj,
+        // Ensure numeric types
+        quoted_amount: Number(obj.quoted_amount || 0),
+        seller_offer_standard: obj.seller_offer_standard != null ? Number(obj.seller_offer_standard) : null,
+        seller_offer_sameday: obj.seller_offer_sameday != null ? Number(obj.seller_offer_sameday) : null,
+        coop_accept_required: obj.coop_accept_required ? 1 : 0,
+        seller_chose_sameday: obj.seller_chose_sameday ? 1 : 0,
+        packed: 0,
+        paid: 0,
+        imei_attempts: 0,
+        imei_locked: 0,
+        payment_late_strikes: 0,
+      });
       persist();
       return { changes: 1 };
     }
@@ -183,11 +379,34 @@ function createDb() {
     throw new Error('Unsupported named SQL: ' + sql.slice(0, 80));
   }
 
+  // ── joinOrder ────────────────────────────────────────────────────────────
+
   function joinOrder(o) {
     const p = data.partners.find((x) => x.id === o.partner_id);
     const d = o.driver_id ? data.drivers.find((x) => x.id === o.driver_id) : null;
-    return { ...o, partner_name: p ? p.company_name : null, driver_name: d ? d.name : null, driver_phone: d ? d.phone : null, driver_code: d ? d.driver_code : null };
+    // Coop R enrichment
+    const pickupCoop = o.pickup_coop_id
+      ? data.partners.find((x) => x.id === o.pickup_coop_id)
+      : null;
+    const pickupCoopFromCoops = o.pickup_coop_slug
+      ? (data.coops || []).find((c) => c.slug === o.pickup_coop_slug)
+      : null;
+    return {
+      ...o,
+      partner_name: p ? p.company_name : null,
+      driver_name: d ? d.name : null,
+      driver_phone: d ? d.phone : null,
+      driver_code: d ? d.driver_code : null,
+      pickup_coop_name: pickupCoop
+        ? pickupCoop.company_name
+        : pickupCoopFromCoops
+        ? pickupCoopFromCoops.name
+        : null,
+      buying_coop_name: p ? p.company_name : null,
+    };
   }
+
+  // ── execGet ──────────────────────────────────────────────────────────────
 
   function execGet(sql, params) {
     // COUNT queries
@@ -219,6 +438,19 @@ function createDb() {
       const p = data.partners.find((x) => x.api_key === params[0]);
       if (!p) return undefined;
       return { id: p.id, company_name: p.company_name, email: p.email, plan: p.plan, active: p.active };
+    }
+    // Standing lookup
+    if (/SELECT.*coop_standing.*FROM partners WHERE id = \?/i.test(sql)) {
+      const p = data.partners.find((x) => x.id === params[0]);
+      if (!p) return undefined;
+      return {
+        id: p.id,
+        company_name: p.company_name,
+        coop_standing: p.coop_standing || 'good',
+        late_payment_strikes: p.late_payment_strikes || 0,
+        probation_at: p.probation_at || null,
+        suspended_at: p.suspended_at || null,
+      };
     }
 
     // Drivers
@@ -263,10 +495,18 @@ function createDb() {
     }
     if (/SELECT\s+\(SELECT COUNT\(\*\) FROM orders\) AS orders/i.test(sql)) {
       const today = nowIso().slice(0, 10);
-      return { orders: data.orders.length, partners: data.partners.filter((p) => p.active !== 0).length, drivers: data.drivers.filter((d) => d.trained).length, paid_volume: data.orders.filter((o) => o.paid).reduce((s, o) => s + Number(o.quoted_amount || 0), 0), paid_today_count: data.orders.filter((o) => o.paid && String(o.paid_at || '').startsWith(today)).length };
+      return {
+        orders: data.orders.length,
+        partners: data.partners.filter((p) => p.active !== 0).length,
+        drivers: data.drivers.filter((d) => d.trained).length,
+        paid_volume: data.orders.filter((o) => o.paid).reduce((s, o) => s + Number(o.quoted_amount || 0), 0),
+        paid_today_count: data.orders.filter((o) => o.paid && String(o.paid_at || '').startsWith(today)).length,
+      };
     }
     return undefined;
   }
+
+  // ── filterOrdersCount ────────────────────────────────────────────────────
 
   function filterOrdersCount(sql, params) {
     let rows = data.orders.slice();
@@ -284,6 +524,8 @@ function createDb() {
     }
     return rows.length;
   }
+
+  // ── execAll ──────────────────────────────────────────────────────────────
 
   function execAll(sql, params) {
     if (/SELECT status, COUNT\(\*\) AS count, COALESCE\(SUM\(quoted_amount\),0\) AS volume\s+FROM orders WHERE partner_id = \? GROUP BY status/i.test(sql)) {
@@ -326,7 +568,7 @@ function createDb() {
     return [];
   }
 
-  api._reload   = () => { data = load(); };
+  api._reload   = () => { data = migrate(load()); };
   api._data     = () => data;
   api._replace  = (next) => { data = next; persist(); };
 
@@ -337,4 +579,4 @@ let _db;
 function getDb()  { if (!_db) _db = createDb(); return _db; }
 function openDb() { _db = createDb(); return _db; }
 
-module.exports = { getDb, openDb, DB_PATH, EMPTY, save, load, ensureDir };
+module.exports = { getDb, openDb, DB_PATH, EMPTY, ORDER_DEFAULTS, PARTNER_DEFAULTS, save, load, ensureDir };
