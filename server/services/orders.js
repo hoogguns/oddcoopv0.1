@@ -38,7 +38,7 @@ function parseOrder(row) {
     seller_chose_sameday: !!row.seller_chose_sameday,
     verification_match: row.verification_match === null ? null : !!row.verification_match,
     // Computed convenience flags
-    is_cross_coop: !!(row.pickup_coop_slug && row.pickup_coop_slug !== row.partner_id),
+    is_cross_coop: !!(row.pickup_coop_slug && row.buying_coop_id && row.pickup_coop_id !== row.buying_coop_id),
     payment_overdue: row.payment_deadline_at
       ? new Date() > new Date(row.payment_deadline_at) && !row.paid
       : false,
@@ -52,6 +52,41 @@ function calcSamedayOffer(standardAmount, specs = {}) {
   return Math.floor(Number(standardAmount) * rate * 100) / 100;
 }
 
+// ── buyerCoopOwnsZip ──────────────────────────────────────────────────────────
+// Returns true if the BUYING partner already covers the seller's pickup ZIP,
+// meaning this is a self-territory order (no cross-coop needed).
+function buyerCoopOwnsZip(buyingPartnerId, zip) {
+  if (!zip) return false;
+  const db   = getDb();
+  const data = db._data();
+  const partner = data.partners.find((p) => p.id === buyingPartnerId);
+  if (!partner) return false;
+
+  // Check partner.territory_zip_codes (stored as JSON string array)
+  let territoryZips = [];
+  try {
+    const raw = partner.territory_zip_codes;
+    territoryZips = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
+  } catch { territoryZips = []; }
+  if (territoryZips.includes(String(zip).trim())) return true;
+
+  // Also check the static tenants config — buying partner may be a seeded tenant
+  const { getTenants } = require('../config/tenants');
+  const tenants = getTenants();
+  for (const t of Object.values(tenants)) {
+    if (t.slug === 'default') continue;
+    // Match tenant to this partner by company name similarity (best-effort for seeded data)
+    const tName = (t.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const pName = (partner.company_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (tName === pName || tName.startsWith(pName) || pName.startsWith(tName)) {
+      if (Array.isArray(t.zip_codes) && t.zip_codes.includes(String(zip).trim())) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // ── createOrder ───────────────────────────────────────────────────────────────
 
 function createOrder(partnerId, data) {
@@ -63,13 +98,13 @@ function createOrder(partnerId, data) {
       ? data.expected_specs
       : JSON.stringify(
           data.expected_specs || {
-            brand: data.device_brand,
-            model: data.device_model,
-            storage: data.device_storage,
-            color: data.device_color,
-            condition: data.device_condition,
-            powers_on: true,
-            screen_cracks: false,
+            brand:          data.device_brand,
+            model:          data.device_model,
+            storage:        data.device_storage,
+            color:          data.device_color,
+            condition:      data.device_condition,
+            powers_on:      true,
+            screen_cracks:  false,
             account_locked: false,
           }
         );
@@ -80,10 +115,10 @@ function createOrder(partnerId, data) {
       : checklists.defaultForPartner(partnerId);
   const doorChecklist = JSON.stringify(
     data.door_checklist || {
-      template_id: checklistTpl ? checklistTpl.id : null,
+      template_id:   checklistTpl ? checklistTpl.id : null,
       template_name: checklistTpl ? checklistTpl.name : 'Default',
-      fields: checklistTpl ? checklistTpl.fields : checklists.DEFAULT_FIELDS,
-      owned_by: 'partner',
+      fields:        checklistTpl ? checklistTpl.fields : checklists.DEFAULT_FIELDS,
+      owned_by:      'partner',
     }
   );
 
@@ -91,11 +126,51 @@ function createOrder(partnerId, data) {
   const trackCarrier = data.tracking_carrier || null;
   const trackUrl     = data.tracking_url || trackingUrl(trackCarrier, trackNum);
 
-  // ── Cross-coop resolution ──
-  // If pickup_coop_slug is provided (or auto-resolved upstream), mark as cross-coop.
-  const pickupCoopSlug = data.pickup_coop_slug || null;
-  const pickupCoopId   = data.pickup_coop_id   || null;
-  const isCrossCoop    = !!(pickupCoopSlug && pickupCoopSlug !== partnerId);
+  // ── Cross-coop resolution (N-to-N) ──────────────────────────────────────
+  //
+  // Priority order:
+  //   1. Caller explicitly provided pickup_coop_slug → use it directly.
+  //   2. Caller provided pickup_zip but no slug → auto-resolve via coopsForZip().
+  //      a. If the buying coop already owns the seller's ZIP → self-territory,
+  //         no cross-coop needed.
+  //      b. If another coop owns it → assign them as the territory (pickup) coop.
+  //      c. If nobody covers the ZIP → local order, no cross-coop flag.
+  //
+  // This works for ANY coop pairing:
+  //   Coop B buying + Coop C picking up → same path as Coop A + Coop R.
+  //   Coop A buying in their OWN territory → isCrossCoop = false.
+
+  let pickupCoopSlug = data.pickup_coop_slug || null;
+  let pickupCoopId   = data.pickup_coop_id   || null;
+
+  if (!pickupCoopSlug && data.pickup_zip) {
+    const { coopsForZip } = require('./network');
+    const coveringCoops = coopsForZip(data.pickup_zip);
+
+    if (coveringCoops.length > 0) {
+      // Check if the buying partner already owns this ZIP
+      const selfTerritory = buyerCoopOwnsZip(partnerId, data.pickup_zip);
+
+      if (!selfTerritory) {
+        // Assign primary territory coop as the pickup coop
+        const primary = coveringCoops[0];
+        pickupCoopSlug = primary.slug;
+
+        // Try to resolve pickup_coop_id from the partners table (by slug/name match)
+        const dbData = db._data();
+        const pickupPartner = dbData.partners.find((p) => {
+          const pName = (p.company_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const tName = (primary.name  || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          return pName === tName || pName === primary.slug || tName === primary.slug;
+        });
+        if (pickupPartner) pickupCoopId = pickupPartner.id;
+      }
+      // If selfTerritory → pickupCoopSlug stays null, isCrossCoop will be false
+    }
+    // If coveringCoops is empty → no territory coop found, local order
+  }
+
+  const isCrossCoop = !!(pickupCoopSlug && pickupCoopSlug !== partnerId && pickupCoopId !== partnerId);
 
   // ── Dual-offer pricing ──
   const standardAmt  = Number(data.quoted_amount || 0);
@@ -146,9 +221,9 @@ function createOrder(partnerId, data) {
     device_brand:     data.device_brand,
     device_model:     data.device_model,
     device_storage:   data.device_storage || null,
-    device_color:     data.device_color || null,
+    device_color:     data.device_color   || null,
     device_condition: data.device_condition,
-    imei:             data.imei || null,
+    imei:             data.imei        || null,
     serial_number:    data.serial_number || null,
     quoted_amount:    effectiveAmt,
     currency:         data.currency || 'USD',
@@ -160,11 +235,11 @@ function createOrder(partnerId, data) {
     tracking_url:     trackUrl,
     door_checklist:   doorChecklist,
     checklist_template_id: checklistTpl ? checklistTpl.id : null,
-    // Cross-coop
-    buying_coop_id:          partnerId,
-    pickup_coop_slug:        pickupCoopSlug,
-    pickup_coop_id:          pickupCoopId,
-    coop_accept_required:    isCrossCoop ? 1 : 0,
+    // Cross-coop (N-to-N)
+    buying_coop_id:       partnerId,        // always the order creator
+    pickup_coop_slug:     pickupCoopSlug,   // auto-resolved or explicit
+    pickup_coop_id:       pickupCoopId,     // resolved partner id of territory coop
+    coop_accept_required: isCrossCoop ? 1 : 0,
     // Dual-offer
     seller_offer_standard:   standardAmt,
     seller_offer_sameday:    samedayAmt,
@@ -181,7 +256,9 @@ function createOrder(partnerId, data) {
       standard_offer: standardAmt,
       sameday_offer:  samedayAmt,
       chose_sameday:  choseSameday,
+      pickup_zip:     data.pickup_zip,
       pickup_coop:    pickupCoopSlug || 'self',
+      is_cross_coop:  isCrossCoop,
       checklist:      checklistTpl && checklistTpl.name,
     },
     'partner',
@@ -343,8 +420,8 @@ function updateTracking(orderId, actor, payload = {}) {
   row.updated_at       = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
   // Outbound label fields (Coop A's shipping label to send to Coop R)
-  if (payload.shipping_label_url)        row.shipping_label_url        = payload.shipping_label_url;
-  if (payload.tracking_number_outbound)  row.tracking_number_outbound  = payload.tracking_number_outbound;
+  if (payload.shipping_label_url)          row.shipping_label_url          = payload.shipping_label_url;
+  if (payload.tracking_number_outbound)    row.tracking_number_outbound    = payload.tracking_number_outbound;
   if (payload.shipping_carrier_preference) row.shipping_carrier_preference = payload.shipping_carrier_preference;
 
   if (typeof db._replace === 'function') db._replace(data);
@@ -369,8 +446,9 @@ function updateTracking(orderId, actor, payload = {}) {
 }
 
 // ── verifyDevice ──────────────────────────────────────────────────────────────
-// Now enforces IMEI gate (up to 8 attempts) before the checklist is shown.
-// Driver must pass IMEI validation in a separate call before submitting observed_specs.
+// Enforces IMEI gate (up to 8 attempts) before checklist is shown.
+// Phase 1: driver submits imei_attempt only → validated against order.imei.
+// Phase 2: driver submits observed_specs + checklist → full match check.
 
 function verifyDevice(orderId, driverId, payload) {
   const db   = getDb();
@@ -388,7 +466,6 @@ function verifyDevice(orderId, driverId, payload) {
   if (!row) throw Object.assign(new Error('Order not found'), { status: 404 });
 
   // ── IMEI gate ──
-  // Phase 1: driver submits imei_attempt only — no observed_specs yet.
   if (payload.imei_attempt !== undefined && payload.observed_specs === undefined) {
     if (row.imei_locked) {
       throw Object.assign(new Error('Order locked after too many IMEI attempts — contact support'), { status: 423 });
@@ -403,10 +480,10 @@ function verifyDevice(orderId, driverId, payload) {
     if (!match) {
       const remaining = MAX_ATTEMPTS - attemptsUsed;
       if (remaining <= 0) {
-        row.imei_locked  = 1;
-        row.status       = 'cancelled';
+        row.imei_locked   = 1;
+        row.status        = 'cancelled';
         row.cancel_reason = 'IMEI gate: max attempts exceeded — possible fraud';
-        row.updated_at   = new Date().toISOString().replace('T', ' ').slice(0, 19);
+        row.updated_at    = new Date().toISOString().replace('T', ' ').slice(0, 19);
         db._replace(data);
         logEvent(db, orderId, 'imei_locked', { attempts: attemptsUsed }, 'driver', driverId);
         throw Object.assign(new Error('IMEI gate locked — order cancelled after 8 failed attempts'), { status: 423 });
@@ -418,7 +495,7 @@ function verifyDevice(orderId, driverId, payload) {
         { status: 422, remaining, attempts_used: attemptsUsed }
       );
     }
-    // IMEI matched — advance to verifying, let driver proceed to checklist
+    // IMEI matched
     row.status     = 'verifying';
     row.updated_at = new Date().toISOString().replace('T', ' ').slice(0, 19);
     db._replace(data);
@@ -430,7 +507,6 @@ function verifyDevice(orderId, driverId, payload) {
   if (row.imei_locked) {
     throw Object.assign(new Error('Order locked — IMEI gate exceeded'), { status: 423 });
   }
-  // Enforce IMEI must have been verified in phase 1 (status = verifying)
   if (order.status !== 'verifying' && order.status !== 'picked_up') {
     throw Object.assign(new Error('Complete IMEI verification before submitting checklist'), { status: 400 });
   }
@@ -448,7 +524,6 @@ function verifyDevice(orderId, driverId, payload) {
     if (a !== b) mismatches.push({ field: key, expected: expected[key], observed: observed[key] });
   }
 
-  // Hard-fail locks
   if (checklist.account_locked === true || checklist.icloud_locked === true || checklist.frp_locked === true) {
     mismatches.push({ field: 'account_lock', expected: false, observed: true });
   }
@@ -461,23 +536,21 @@ function verifyDevice(orderId, driverId, payload) {
   const packed = payload.packed !== false ? 1 : 0;
   const now    = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
-  // Store driver signature & sign-off checkboxes
   const signature = payload.driver_signature
     ? (typeof payload.driver_signature === 'string'
         ? payload.driver_signature
         : JSON.stringify(payload.driver_signature))
     : null;
 
-  row.status              = status;
-  row.verified_specs      = JSON.stringify({ ...observed, checklist, mismatches });
-  row.verification_notes  = payload.notes || null;
-  row.verification_match  = match ? 1 : 0;
-  row.packed              = packed;
+  row.status             = status;
+  row.verified_specs     = JSON.stringify({ ...observed, checklist, mismatches });
+  row.verification_notes = payload.notes || null;
+  row.verification_match = match ? 1 : 0;
+  row.packed             = packed;
   if (packed) row.packed_at = now;
-  row.driver_signature    = signature;
-  row.updated_at          = now;
+  row.driver_signature   = signature;
+  row.updated_at         = now;
 
-  // Start 1hr payment clock when device matches
   if (match && !row.payment_deadline_at) {
     const deadline = new Date(Date.now() + 60 * 60 * 1000);
     row.payment_deadline_at  = deadline.toISOString().replace('T', ' ').slice(0, 19);
@@ -504,7 +577,6 @@ function verifyDevice(orderId, driverId, payload) {
 }
 
 // ── processPayment ────────────────────────────────────────────────────────────
-// Enforces payment deadline and tracks late strikes on Coop A.
 
 function processPayment(orderId, partnerId, { method = 'ach_same_day', payment_ref } = {}) {
   const db    = getDb();
@@ -521,11 +593,10 @@ function processPayment(orderId, partnerId, { method = 'ach_same_day', payment_r
     throw Object.assign(new Error('Order already paid'), { status: 400 });
   }
 
-  const ref = payment_ref || `PAY-${Date.now().toString(36).toUpperCase()}`;
-  const now = new Date();
+  const ref    = payment_ref || `PAY-${Date.now().toString(36).toUpperCase()}`;
+  const now    = new Date();
   const isLate = order.payment_deadline_at && now > new Date(order.payment_deadline_at);
 
-  // Mutate via JSON store
   const row = data.orders.find((o) => o.id === orderId);
   if (!row) throw Object.assign(new Error('Order not found'), { status: 404 });
   row.status         = 'paid';
@@ -538,7 +609,6 @@ function processPayment(orderId, partnerId, { method = 'ach_same_day', payment_r
 
   logEvent(db, orderId, 'paid', { method, payment_ref: ref, amount: order.quoted_amount, late: isLate }, 'partner', partnerId);
 
-  // Track late payment strike against Coop A
   if (isLate) {
     _recordLatePaymentStrike(db, data, partnerId, orderId);
   }
@@ -547,7 +617,6 @@ function processPayment(orderId, partnerId, { method = 'ach_same_day', payment_r
 }
 
 // ── _recordLatePaymentStrike ──────────────────────────────────────────────────
-// Increments strike counter on Coop A. Places on probation at 3 strikes.
 
 function _recordLatePaymentStrike(db, data, partnerId, orderId) {
   const partner = data.partners.find((p) => p.id === partnerId);
@@ -608,14 +677,13 @@ function partnerStats(partnerId) {
     )
     .get(partnerId);
 
-  const byStatus   = Object.fromEntries(rows.map((r) => [r.status, { count: r.count, volume: r.volume }]));
+  const byStatus    = Object.fromEntries(rows.map((r) => [r.status, { count: r.count, volume: r.volume }]));
   const totalOrders = rows.reduce((s, r) => s + r.count, 0);
   const totalVolume = rows.reduce((s, r) => s + r.volume, 0);
 
-  // Cross-coop stats
   const dbData = db._data();
-  const allOrders = dbData.orders.filter((o) => o.partner_id === partnerId);
-  const crossCoopOrders    = allOrders.filter((o) => o.coop_accept_required);
+  const allOrders       = dbData.orders.filter((o) => o.partner_id === partnerId);
+  const crossCoopOrders = allOrders.filter((o) => o.coop_accept_required);
   const latePaymentStrikes = (dbData.partners.find((p) => p.id === partnerId) || {}).late_payment_strikes || 0;
 
   return {
@@ -699,7 +767,7 @@ function partnerEconomics(partnerId) {
     partner_invoice: invoice,
     platform_profit: {
       ...operator,
-      note: 'Estimated OddCoop contribution on this partner's volume: invoice revenue minus assumed Wasatch COGS.',
+      note: 'Estimated OddCoop contribution on this partner\'s volume: invoice revenue minus assumed Wasatch COGS.',
     },
     rates: { plans: PLANS, cogs: COGS },
   };
@@ -723,5 +791,6 @@ module.exports = {
   partnerEconomics,
   getCoopStanding,
   calcSamedayOffer,
+  buyerCoopOwnsZip,
   _recordLatePaymentStrike,
 };
