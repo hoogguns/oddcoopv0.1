@@ -1,34 +1,25 @@
 {
   "name": "oddcoop",
-  "version": "1.0.0",
-  "description": "Cooperative same-day device pickup logistics, compliance, and territory routing for buyback networks",
+  "version": "0.1.0",
+  "description": "OddCoop — cooperative same-day device buyback platform",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "start:prod": "node server/index.js",
     "dev": "nodemon server/index.js",
     "seed": "node server/seed.js",
-    "db:reset": "node server/seed.js --reset",
-    "launch-check": "node -e \"const http=require('http');http.get('http://127.0.0.1:'+(process.env.PORT||3847)+'/api/health',r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{console.log(d);process.exit(r.statusCode===200?0:1)})}).on('error',e=>{console.error(e);process.exit(1)})\""
+    "seed:reset": "node server/seed.js --reset"
   },
-  "keywords": ["cooperative","logistics","buyback","same-day","device-pickup","territory","wasatch"],
-  "author": "hoogguns",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/hoogguns/oddcoopv0.1.git"
-  },
-  "engines": { "node": ">=18" },
   "dependencies": {
-    "bcryptjs": "^3.0.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0",
-    "uuid": "^11.1.0"
+    "bcryptjs": "^2.4.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "uuid": "^9.0.0",
+    "ws": "^8.17.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
