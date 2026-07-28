@@ -2,22 +2,27 @@
   "name": "oddcoop",
   "version": "0.1.0",
   "description": "OddCoop — cooperative same-day device buyback platform",
-  "main": "server/index.js",
+  "private": true,
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "nodemon server/index.js",
-    "seed": "node server/seed.js",
-    "seed:reset": "node server/seed.js --reset"
+    "dev": "next dev -p 8080",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "express": "^4.18.2",
-    "jsonwebtoken": "^9.0.0",
-    "uuid": "^9.0.0",
-    "ws": "^8.17.1"
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "lucide-react": "^0.469.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "tailwindcss": "^4.0.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "postcss": "^8.4.49"
   },
   "engines": {
     "node": ">=18.0.0"
