@@ -1,3 +1,14 @@
+/**
+ * routes/auth.js — Partner and driver authentication.
+ *
+ * POST /api/auth/partner/register  — create a new partner account
+ * POST /api/auth/partner/login     — exchange credentials for a JWT
+ * GET  /api/auth/partner/me        — retrieve authenticated partner profile
+ * POST /api/auth/driver/login      — driver credential exchange
+ * GET  /api/auth/driver/me         — retrieve authenticated driver profile
+ */
+'use strict';
+
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { v4: uuid } = require('uuid');

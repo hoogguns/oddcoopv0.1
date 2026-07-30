@@ -6,6 +6,7 @@
  * GET  /api/coop/network                — full network summary with driver counts
  * GET  /api/coop/territory/:zip         — which coops cover a ZIP code
  * POST /api/coop/register               — self-service coop onboarding
+ * GET  /api/coop/standing               — my coop's standing + strike count
  * GET  /api/coop/:slug                  — single coop detail
  *
  * ── Cross-coop transaction endpoints ──
@@ -68,6 +69,34 @@ router.get('/territory/:zip', (req, res) => {
     covered: true,
     primary: coops[0].slug,
     coops:   coops.map((c) => ({ slug: c.slug, name: c.name, market: c.market })),
+  });
+});
+
+// ── standing: read my coop's standing ────────────────────────────────────────
+router.get('/standing', requirePartner, (req, res) => {
+  const db      = getDb();
+  const data    = db._data();
+  const partner = data.partners.find((p) => p.id === req.user.id);
+  if (!partner) return res.status(404).json({ error: 'Partner not found' });
+
+  const standing = partner.coop_standing || 'good';
+  const strikes  = Array.isArray(partner.late_payment_strikes) ? partner.late_payment_strikes : [];
+  const suspended_at = partner.suspended_at || null;
+  const suspended_reason = partner.suspended_reason || null;
+
+  res.json({
+    partner_id: partner.id,
+    company_name: partner.company_name,
+    standing,
+    strikes_count: strikes.length,
+    strikes,
+    suspended_at,
+    suspended_reason,
+    message: standing === 'good'
+      ? 'Your coop is in good standing.'
+      : standing === 'warning'
+        ? `Warning: ${strikes.length} late payment strike(s). Suspension at 3.`
+        : 'Your coop is suspended. Contact support to resolve.',
   });
 });
 

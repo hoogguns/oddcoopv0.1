@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Data store (contains PII — never commit)
+data/oddcoop.json
+data/oddcoop.json.tmp
+
+# Environment secrets
+.env
+
+# File uploads and generated assets
+storage/*
+!storage/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/settings.json
+
+# Build artifacts
+*.min.js

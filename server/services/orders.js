@@ -63,7 +63,7 @@ function buyerCoopOwnsZip(buyingPartnerId, zip) {
   if (!partner) return false;
 
   // Check partner.territory_zip_codes (stored as JSON string array)
-  let territoryZips = [];
+  let territoryZips;
   try {
     const raw = partner.territory_zip_codes;
     territoryZips = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');

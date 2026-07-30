@@ -14,10 +14,20 @@ const { getDb } = require('../db');
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * POST a JSON body to an arbitrary URL with a 4-second timeout.
+ * Returns a result object instead of throwing so callers can handle failures gracefully.
+ *
+ * @param {string} urlStr - Target URL (http or https)
+ * @param {object} body - JSON-serializable payload
+ * @returns {Promise<{ok: boolean, status?: number, error?: string}>}
+ */
 function safePost(urlStr, body) {
+  // URL is a Node.js global (available since Node 10) — no import needed
+  const { URL: NodeURL } = require('url');
   return new Promise((resolve) => {
     let parsed;
-    try { parsed = new URL(urlStr); } catch { return resolve({ ok: false, error: 'invalid_url' }); }
+    try { parsed = new NodeURL(urlStr); } catch { return resolve({ ok: false, error: 'invalid_url' }); }
     const payload  = JSON.stringify(body);
     const mod      = parsed.protocol === 'https:' ? https : http;
     const req      = mod.request(

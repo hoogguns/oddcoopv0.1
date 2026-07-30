@@ -1,3 +1,13 @@
+/**
+ * routes/public.js — Unauthenticated public endpoints.
+ *
+ * GET  /api/public/health    — liveness + DB stats (used by Render health check)
+ * GET  /api/public/stats     — homepage hero numbers (orders, drivers, volume)
+ * GET  /api/public/coverage  — city list for the current tenant
+ * POST /api/public/lead      — seller / partner lead capture form
+ */
+'use strict';
+
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { getDb } = require('../db');

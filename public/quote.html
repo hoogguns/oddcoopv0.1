@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#01696f" />
+  <title>Get a Quote — OddCoop</title>
+  <meta name="description" content="Select your device, answer a few quick questions, and receive an instant offer. Same-day pickup available in your area." />
+  <link rel="stylesheet" href="/css/site.css" />
+  <link rel="stylesheet" href="/css/quote.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2301696f'/%3E%3Ctext x='16' y='22' text-anchor='middle' fill='white' font-size='16' font-family='sans-serif' font-weight='700'%3EOC%3C/text%3E%3C/svg%3E" />
+  <script src="/js/theme.js"></script>
+</head>
+<body class="quote-page">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="container">
+      <a class="brand" href="/">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#01696f"/>
+          <text x="16" y="22" text-anchor="middle" fill="white" font-size="15" font-family="sans-serif" font-weight="700">OC</text>
+        </svg>
+        <span class="brand-name">OddCoop</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Quote steps">
+        <span style="color:var(--muted); font-size:var(--text-xs);">Instant Device Quote</span>
+      </nav>
+
+      <div class="nav-cta">
+        <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+          <!-- icon injected by theme.js -->
+        </button>
+        <a class="btn btn-ghost btn-sm" href="/login">Partner Login</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quote shell -->
+  <main class="quote-wrap">
+    <div class="quote-shell">
+
+      <!-- Progress -->
+      <div>
+        <div class="progress-track" role="progressbar" aria-label="Quote progress">
+          <div class="progress-seg" aria-hidden="true"></div>
+          <div class="progress-seg" aria-hidden="true"></div>
+          <div class="progress-seg" aria-hidden="true"></div>
+          <div class="progress-seg" aria-hidden="true"></div>
+          <div class="progress-seg" aria-hidden="true"></div>
+        </div>
+        <div class="progress-label" style="margin-top:var(--space-2);">Step 1 of 5</div>
+      </div>
+
+      <!-- ─── Step 1: Device Selection ─────────────────────────────── -->
+      <div class="step-card active" data-step="1" aria-label="Step 1: Select your device">
+        <div class="step-eyebrow">Step 1</div>
+        <h2>Which device are you selling?</h2>
+        <p class="step-sub">Select your device details for an accurate quote. Takes 30 seconds.</p>
+
+        <div class="selector-group">
+          <div class="selector-row">
+            <label class="selector-label" for="sel-brand">Brand</label>
+            <select class="selector-select" id="sel-brand" name="brand" autocomplete="off">
+              <option value="">Loading…</option>
+            </select>
+          </div>
+
+          <div class="selector-row">
+            <label class="selector-label" for="sel-model">Model</label>
+            <select class="selector-select" id="sel-model" name="model" disabled autocomplete="off">
+              <option value="">Select brand first…</option>
+            </select>
+          </div>
+
+          <div class="selector-row">
+            <label class="selector-label" for="sel-storage">Storage</label>
+            <select class="selector-select" id="sel-storage" name="storage" disabled autocomplete="off">
+              <option value="">Select model first…</option>
+            </select>
+          </div>
+
+          <div class="selector-row">
+            <label class="selector-label" for="sel-carrier">Carrier</label>
+            <select class="selector-select" id="sel-carrier" name="carrier" disabled autocomplete="off">
+              <option value="">Select model first…</option>
+            </select>
+          </div>
+
+          <div class="selector-row">
+            <label class="selector-label" for="sel-color">
+              Color
+              <span style="font-weight:400;color:var(--muted);margin-left:4px;">(optional)</span>
+            </label>
+            <select class="selector-select" id="sel-color" name="color" disabled autocomplete="off">
+              <option value="">Select model first…</option>
+            </select>
+          </div>
+        </div>
+
+        <p id="device-preview" class="text-sm text-muted hidden" style="margin-bottom:var(--space-4);"></p>
+
+        <div class="step-actions">
+          <button class="btn btn-primary btn-lg" id="btn-device-next" disabled>
+            Continue →
+          </button>
+        </div>
+      </div>
+
+      <!-- ─── Step 2: Condition Assessment ─────────────────────────── -->
+      <div class="step-card" data-step="2" aria-label="Step 2: Condition assessment">
+        <div class="step-eyebrow">Step 2</div>
+        <h2>How's the condition?</h2>
+        <p class="step-sub">Answer a few quick questions about your device. Your honest answers get you the most accurate offer.</p>
+
+        <div class="condition-questions" id="condition-questions">
+          <!-- Injected by quote.js -->
+        </div>
+
+        <div id="condition-grade-preview" class="grade-badge hidden" aria-live="polite"></div>
+
+        <div class="step-actions">
+          <button class="btn btn-ghost btn-sm btn-back" id="btn-condition-back">← Back</button>
+          <button class="btn btn-primary btn-lg" id="btn-condition-next" disabled>
+            See My Offers
+          </button>
+        </div>
+      </div>
+
+      <!-- ─── Step 3: Offer Selection ───────────────────────────────── -->
+      <div class="step-card" data-step="3" aria-label="Step 3: Choose your offer">
+        <div class="step-eyebrow">Step 3</div>
+        <h2>Your offers</h2>
+        <p class="step-sub">Both offers are based on your device details and condition. Choose what works best for you.</p>
+
+        <div id="offer-grade" class="grade-badge hidden" aria-live="polite"></div>
+
+        <div class="offer-grid">
+
+          <!-- Standard offer -->
+          <div class="offer-card" id="offer-standard-card" data-offer="standard" role="radio" tabindex="0" aria-label="Standard offer">
+            <div class="offer-check" aria-hidden="true"></div>
+            <div class="offer-tag">Standard</div>
+            <div class="offer-price" id="offer-standard-price">—</div>
+            <div class="offer-pill offer-pill-standard">Mail-in</div>
+            <p class="offer-desc">Ship your device with our prepaid label. Payment processes after we receive and verify it (2–5 days).</p>
+          </div>
+
+          <!-- Same-Day offer -->
+          <div class="offer-card" id="offer-sameday-card" data-offer="sameday" role="radio" tabindex="0" aria-label="Same-day offer">
+            <div class="offer-check" aria-hidden="true"></div>
+            <div class="offer-tag">Same-Day</div>
+            <div class="offer-price" id="offer-sameday-price">—</div>
+            <div class="offer-pill offer-pill-sameday">⚡ Today</div>
+            <p class="offer-desc">A trained courier comes to you, verifies on the spot, and payment fires the same day.</p>
+            <p id="sameday-unavail" class="text-xs text-muted hidden" style="margin-top:var(--space-2);">
+              Not available in your area yet. Enter your ZIP to check.
+            </p>
+          </div>
+
+        </div>
+
+        <div class="step-actions">
+          <button class="btn btn-ghost btn-sm btn-back" id="btn-offer-back">← Back</button>
+          <button class="btn btn-primary btn-lg" id="btn-offer-next">Continue →</button>
+        </div>
+      </div>
+
+      <!-- ─── Step 4: Seller Information ───────────────────────────── -->
+      <div class="step-card" data-step="4" aria-label="Step 4: Your information">
+        <div class="step-eyebrow">Step 4</div>
+        <h2>Your information</h2>
+        <p class="step-sub">We need your contact details and pickup address. Only used for this order.</p>
+
+        <div class="info-form" id="info-form">
+          <div class="info-row">
+            <div class="info-field">
+              <label for="info-name">Full name *</label>
+              <input type="text" id="info-name" name="sellerName" placeholder="Jordan Lee" autocomplete="name" required />
+            </div>
+            <div class="info-field">
+              <label for="info-phone">Phone number *</label>
+              <input type="tel" id="info-phone" name="sellerPhone" placeholder="801-555-0100" autocomplete="tel" required />
+            </div>
+          </div>
+
+          <div class="info-field full">
+            <label for="info-email">
+              Email
+              <span style="font-weight:400;color:var(--muted);margin-left:4px;">(optional — for confirmation)</span>
+            </label>
+            <input type="email" id="info-email" name="sellerEmail" placeholder="you@example.com" autocomplete="email" />
+          </div>
+
+          <div class="info-field full">
+            <label for="info-address">Pickup address *</label>
+            <input type="text" id="info-address" name="pickupAddress" placeholder="123 Main Street" autocomplete="street-address" required />
+          </div>
+
+          <div class="info-row">
+            <div class="info-field">
+              <label for="info-city">City *</label>
+              <input type="text" id="info-city" name="pickupCity" placeholder="Salt Lake City" autocomplete="address-level2" required />
+            </div>
+            <div class="info-field">
+              <label for="info-zip">ZIP code *</label>
+              <input type="text" id="info-zip" name="pickupZip" placeholder="84101" maxlength="5"
+                     inputmode="numeric" pattern="[0-9]{5}" autocomplete="postal-code" required />
+              <div id="zip-indicator" class="zip-indicator hidden" aria-live="polite">
+                <span class="zip-dot"></span>Checking coverage…
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p id="info-error" class="text-sm text-bad hidden" style="margin-top:var(--space-3);"></p>
+
+        <div class="step-actions" style="margin-top:var(--space-6);">
+          <button class="btn btn-ghost btn-sm btn-back" id="btn-info-back">← Back</button>
+          <button class="btn btn-primary btn-lg" id="btn-info-next">Review Order →</button>
+        </div>
+      </div>
+
+      <!-- ─── Step 5: Confirm & Submit ──────────────────────────────── -->
+      <div class="step-card" data-step="5" aria-label="Step 5: Review and confirm">
+        <div class="step-eyebrow">Step 5</div>
+        <h2>Confirm your order</h2>
+        <p class="step-sub">Review the details below before submitting.</p>
+
+        <!-- Summary -->
+        <div class="order-summary">
+          <div class="os-row">
+            <span class="os-label">Your offer</span>
+            <span id="review-offer-type" class="os-value chip chip-teal">Standard</span>
+          </div>
+          <div class="os-divider"></div>
+          <div class="os-row">
+            <span class="os-label">Amount</span>
+            <span id="review-amount" class="os-amount">$0</span>
+          </div>
+        </div>
+
+        <!-- Review table (injected by quote.js) -->
+        <div class="review-table" id="review-table" role="list" aria-label="Order summary">
+          <!-- rows injected by quote.js -->
+        </div>
+
+        <p id="submit-error" class="text-sm text-bad hidden" style="margin-top:var(--space-4);"></p>
+
+        <div class="step-actions" style="margin-top:var(--space-6);">
+          <button class="btn btn-ghost btn-sm btn-back" id="btn-review-back">← Back</button>
+          <button class="btn btn-primary btn-lg" id="btn-submit">
+            <span class="btn-label">Submit Order</span>
+            <span class="btn-submit-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <p class="text-xs text-muted" style="margin-top:var(--space-4);text-align:center;">
+          By submitting you agree to our <a href="/terms" style="color:var(--teal-light);">Terms</a>
+          and <a href="/privacy" style="color:var(--teal-light);">Privacy Policy</a>.
+        </p>
+      </div>
+
+    </div><!-- /quote-shell -->
+  </main>
+
+  <script src="/js/pricing.js"></script>
+  <script src="/js/deviceSelector.js"></script>
+  <script src="/js/quote.js"></script>
+
+</body>
+</html>

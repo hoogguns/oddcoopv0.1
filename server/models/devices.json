@@ -1,0 +1,274 @@
+[
+  {
+    "brand": "Apple",
+    "models": [
+      {
+        "model": "iPhone 15 Pro Max",
+        "storageOptions": ["256GB", "512GB", "1TB"],
+        "colors": ["Black Titanium", "Blue Titanium", "White Titanium", "Natural Titanium"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 650
+      },
+      {
+        "model": "iPhone 15 Pro",
+        "storageOptions": ["128GB", "256GB", "512GB", "1TB"],
+        "colors": ["Black Titanium", "Blue Titanium", "White Titanium", "Natural Titanium"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 600
+      },
+      {
+        "model": "iPhone 15 Plus",
+        "storageOptions": ["128GB", "256GB", "512GB"],
+        "colors": ["Black", "Blue", "Green", "Yellow", "Pink"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 480
+      },
+      {
+        "model": "iPhone 15",
+        "storageOptions": ["128GB", "256GB", "512GB"],
+        "colors": ["Black", "Blue", "Green", "Yellow", "Pink"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 420
+      },
+      {
+        "model": "iPhone 14 Pro Max",
+        "storageOptions": ["128GB", "256GB", "512GB", "1TB"],
+        "colors": ["Deep Purple", "Gold", "Silver", "Space Black"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 520
+      },
+      {
+        "model": "iPhone 14 Pro",
+        "storageOptions": ["128GB", "256GB", "512GB", "1TB"],
+        "colors": ["Deep Purple", "Gold", "Silver", "Space Black"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 440
+      },
+      {
+        "model": "iPhone 14 Plus",
+        "storageOptions": ["128GB", "256GB", "512GB"],
+        "colors": ["Blue", "Purple", "Midnight", "Starlight", "Product Red"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 360
+      },
+      {
+        "model": "iPhone 14",
+        "storageOptions": ["128GB", "256GB", "512GB"],
+        "colors": ["Blue", "Purple", "Midnight", "Starlight", "Product Red"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 310
+      },
+      {
+        "model": "iPhone 13 Pro Max",
+        "storageOptions": ["128GB", "256GB", "512GB", "1TB"],
+        "colors": ["Alpine Green", "Sierra Blue", "Gold", "Silver", "Graphite"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 380
+      },
+      {
+        "model": "iPhone 13 Pro",
+        "storageOptions": ["128GB", "256GB", "512GB", "1TB"],
+        "colors": ["Alpine Green", "Sierra Blue", "Gold", "Silver", "Graphite"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 320
+      },
+      {
+        "model": "iPhone 13",
+        "storageOptions": ["128GB", "256GB", "512GB"],
+        "colors": ["Blue", "Pink", "Midnight", "Starlight", "Product Red", "Green"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 240
+      },
+      {
+        "model": "iPhone 13 Mini",
+        "storageOptions": ["128GB", "256GB", "512GB"],
+        "colors": ["Blue", "Pink", "Midnight", "Starlight", "Product Red", "Green"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 190
+      },
+      {
+        "model": "iPhone 12",
+        "storageOptions": ["64GB", "128GB", "256GB"],
+        "colors": ["Blue", "Green", "Black", "White", "Product Red", "Purple"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 160
+      },
+      {
+        "model": "iPhone 12 Pro Max",
+        "storageOptions": ["128GB", "256GB", "512GB"],
+        "colors": ["Pacific Blue", "Gold", "Silver", "Graphite"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 200
+      },
+      {
+        "model": "iPhone 11",
+        "storageOptions": ["64GB", "128GB", "256GB"],
+        "colors": ["Black", "White", "Green", "Yellow", "Purple", "Product Red"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 95
+      },
+      {
+        "model": "iPhone SE (3rd Gen)",
+        "storageOptions": ["64GB", "128GB", "256GB"],
+        "colors": ["Midnight", "Starlight", "Product Red"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon", "Sprint"],
+        "baseMarketValue": 110
+      }
+    ]
+  },
+  {
+    "brand": "Samsung",
+    "models": [
+      {
+        "model": "Galaxy S24 Ultra",
+        "storageOptions": ["256GB", "512GB", "1TB"],
+        "colors": ["Titanium Black", "Titanium Gray", "Titanium Violet", "Titanium Yellow"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 620
+      },
+      {
+        "model": "Galaxy S24+",
+        "storageOptions": ["256GB", "512GB"],
+        "colors": ["Cobalt Violet", "Onyx Black", "Marble Gray", "Sandstone Orange"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 490
+      },
+      {
+        "model": "Galaxy S24",
+        "storageOptions": ["128GB", "256GB"],
+        "colors": ["Cobalt Violet", "Onyx Black", "Marble Gray", "Sandstone Orange"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 380
+      },
+      {
+        "model": "Galaxy S23 Ultra",
+        "storageOptions": ["256GB", "512GB", "1TB"],
+        "colors": ["Phantom Black", "Cream", "Green", "Lavender"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 480
+      },
+      {
+        "model": "Galaxy S23+",
+        "storageOptions": ["256GB", "512GB"],
+        "colors": ["Phantom Black", "Cream", "Green", "Lavender"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 350
+      },
+      {
+        "model": "Galaxy S23",
+        "storageOptions": ["128GB", "256GB"],
+        "colors": ["Phantom Black", "Cream", "Green", "Lavender"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 270
+      },
+      {
+        "model": "Galaxy S22 Ultra",
+        "storageOptions": ["128GB", "256GB", "512GB", "1TB"],
+        "colors": ["Phantom Black", "White", "Green", "Burgundy"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 330
+      },
+      {
+        "model": "Galaxy S22+",
+        "storageOptions": ["128GB", "256GB"],
+        "colors": ["Phantom Black", "White", "Gold", "Graphite"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 240
+      },
+      {
+        "model": "Galaxy S22",
+        "storageOptions": ["128GB", "256GB"],
+        "colors": ["Phantom Black", "White", "Pink Gold", "Graphite"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 190
+      },
+      {
+        "model": "Galaxy Z Fold 5",
+        "storageOptions": ["256GB", "512GB", "1TB"],
+        "colors": ["Phantom Black", "Cream", "Icy Blue"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 760
+      },
+      {
+        "model": "Galaxy Z Flip 5",
+        "storageOptions": ["256GB", "512GB"],
+        "colors": ["Mint", "Graphite", "Cream", "Lavender"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 420
+      }
+    ]
+  },
+  {
+    "brand": "Google",
+    "models": [
+      {
+        "model": "Pixel 8 Pro",
+        "storageOptions": ["128GB", "256GB", "1TB"],
+        "colors": ["Obsidian", "Porcelain", "Bay"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 440
+      },
+      {
+        "model": "Pixel 8",
+        "storageOptions": ["128GB", "256GB"],
+        "colors": ["Obsidian", "Hazel", "Rose"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 330
+      },
+      {
+        "model": "Pixel 7 Pro",
+        "storageOptions": ["128GB", "256GB", "512GB"],
+        "colors": ["Obsidian", "Snow", "Hazel"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 290
+      },
+      {
+        "model": "Pixel 7",
+        "storageOptions": ["128GB", "256GB"],
+        "colors": ["Obsidian", "Snow", "Lemongrass"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 210
+      },
+      {
+        "model": "Pixel 7a",
+        "storageOptions": ["128GB"],
+        "colors": ["Charcoal", "Snow", "Sea", "Coral"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 180
+      },
+      {
+        "model": "Pixel 6 Pro",
+        "storageOptions": ["128GB", "256GB", "512GB"],
+        "colors": ["Stormy Black", "Cloudy White", "Sorta Sunny"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 175
+      },
+      {
+        "model": "Pixel 6",
+        "storageOptions": ["128GB", "256GB"],
+        "colors": ["Stormy Black", "Kinda Coral", "Sorta Seafoam"],
+        "carriers": ["Unlocked", "AT&T", "T-Mobile", "Verizon"],
+        "baseMarketValue": 130
+      }
+    ]
+  },
+  {
+    "brand": "OnePlus",
+    "models": [
+      {
+        "model": "OnePlus 12",
+        "storageOptions": ["256GB", "512GB"],
+        "colors": ["Flowy Emerald", "Silky Black"],
+        "carriers": ["Unlocked"],
+        "baseMarketValue": 340
+      },
+      {
+        "model": "OnePlus 11",
+        "storageOptions": ["128GB", "256GB"],
+        "colors": ["Titan Black", "Eternal Green"],
+        "carriers": ["Unlocked"],
+        "baseMarketValue": 220
+      }
+    ]
+  }
+]

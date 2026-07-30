@@ -1,3 +1,35 @@
+/**
+ * routes/orders.js — Order lifecycle management for partners and drivers.
+ *
+ * Partner endpoints:
+ *   GET  /api/orders/partner/stats          — open / total / volume counts
+ *   GET  /api/orders/partner/economics      — SaaS invoice + margin analysis
+ *   GET  /api/orders/partner/pricing        — current plan pricing config
+ *   GET  /api/orders/partner/orders         — paginated order list with filters
+ *   POST /api/orders/partner/orders         — create a new order
+ *   GET  /api/orders/partner/orders/:id     — order detail + event log
+ *   POST /api/orders/partner/orders/:id/status   — advance order status
+ *   POST /api/orders/partner/orders/:id/pay      — release same-day payment
+ *   POST /api/orders/partner/orders/:id/assign   — manually assign a driver
+ *   POST /api/orders/partner/orders/:id/cancel   — cancel an order
+ *   POST /api/orders/partner/orders/:id/dispatch — send to Roadie/Shipt/webhook
+ *   GET  /api/orders/partner/orders/:id/dispatch — list dispatch jobs for order
+ *   GET  /api/orders/partner/drivers             — trained drivers available
+ *   GET  /api/orders/partner/checklists          — list checklist templates
+ *   POST /api/orders/partner/checklists          — create checklist template
+ *   GET  /api/orders/partner/checklists/:id      — get single template
+ *   PATCH /api/orders/partner/checklists/:id     — update template
+ *   DELETE /api/orders/partner/checklists/:id    — delete template
+ *
+ * Driver endpoints:
+ *   GET  /api/orders/driver/orders          — assigned + available orders
+ *   GET  /api/orders/driver/orders/:id      — order detail
+ *   POST /api/orders/driver/orders/:id/claim   — claim an available order
+ *   POST /api/orders/driver/orders/:id/status  — update driver-facing status
+ *   POST /api/orders/driver/orders/:id/verify  — submit door checklist + specs
+ */
+'use strict';
+
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { requirePartner, requireAuth } = require('../middleware/auth');

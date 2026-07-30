@@ -124,7 +124,7 @@ OC.connectWS = function (partnerId, onOrder) {
       if (msg.type === 'coopR_new_order' || msg.type === 'order_update') {
         if (typeof onOrder === 'function') onOrder(msg);
       }
-    } catch (_) {}
+    } catch (_e) { /* ignore malformed WS frames */ }
   };
   ws.onclose = () => {
     // Reconnect after 3s

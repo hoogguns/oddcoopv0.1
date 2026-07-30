@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#2d8b8b" id="meta-theme-color" />
+  <meta name="theme-color" content="#01696f" id="meta-theme-color" />
   <title>Dashboard — OddCoop</title>
-  <link rel="stylesheet" href="/css/site.css?v=2" />
+  <link rel="stylesheet" href="/css/site.css?v=3" />
 </head>
 <body class="app-body">
 
@@ -14,7 +14,7 @@
     <div class="auth-card">
       <div class="auth-logo">
         <svg width="36" height="36" viewBox="0 0 32 32" fill="none">
-          <rect width="32" height="32" rx="8" fill="#2d8b8b" id="login-logo-rect"/>
+          <rect width="32" height="32" rx="8" fill="#01696f" id="login-logo-rect"/>
           <text x="16" y="22" text-anchor="middle" fill="white" font-size="16"
                 font-family="sans-serif" font-weight="700" id="login-logo-letter">O</text>
         </svg>
@@ -24,10 +24,10 @@
       <div id="login-alert" class="hidden"></div>
       <form id="login-form" class="stack">
         <label class="field">Email
-          <input name="email" type="email" autocomplete="email" required placeholder="you@example.com" />
+          <input name="email" type="email" autocomplete="email" required placeholder="partner@wasatchbuybacks.demo" />
         </label>
         <label class="field">Password
-          <input name="password" type="password" autocomplete="current-password" required />
+          <input name="password" type="password" autocomplete="current-password" required placeholder="demo1234" />
         </label>
         <button class="btn btn-primary btn-block" type="submit">Sign in</button>
       </form>
@@ -43,7 +43,7 @@
       <a class="brand" href="/">
         <div class="brand-icon">
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="#2d8b8b" id="logo-rect"/>
+            <rect width="32" height="32" rx="8" fill="#01696f" id="logo-rect"/>
             <text x="16" y="22" text-anchor="middle" fill="white" font-size="16"
                   font-family="sans-serif" font-weight="700" id="logo-letter">O</text>
           </svg>
@@ -53,9 +53,12 @@
 
       <!-- stats row -->
       <div id="stats-row" class="side-stats" style="padding:.5rem 1rem;font-size:.78rem;color:var(--muted)">
-        <span id="s-open">-</span> open &nbsp;|
+        <span id="s-open">-</span> open &nbsp;|&nbsp;
         <span id="s-total">-</span> total
       </div>
+
+      <!-- standing banner (shows on warning/suspended) -->
+      <div id="standing-banner" style="display:none"></div>
 
       <nav class="side-nav">
         <a href="#" class="active" data-view="orders">
@@ -69,6 +72,10 @@
         <a href="#" data-view="drivers">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Drivers
+        </a>
+        <a href="#" data-view="network">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
+          Coop network
         </a>
         <a href="#" data-view="economics">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -90,6 +97,7 @@
           <div>
             <div class="side-company" id="side-company">Loading…</div>
             <div class="side-plan" id="side-plan"></div>
+            <div id="standing-badge" style="margin-top:.2rem"></div>
           </div>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-logout" type="button">Sign out</button>
@@ -248,6 +256,48 @@
           </div>
         </section>
 
+        <!-- NETWORK VIEW -->
+        <section id="view-network" class="hidden">
+          <!-- Incoming cross-coop orders (Coop R role) -->
+          <div class="panel" style="margin-bottom:1.25rem">
+            <div class="panel-head">
+              <h2>Incoming orders <span class="chip chip-brand" style="font-size:.7rem">Coop R</span></h2>
+              <span class="text-sm text-muted" id="incoming-count">—</span>
+            </div>
+            <p class="text-sm text-muted" style="padding:.25rem 1.25rem 0">
+              Orders from other buying coops in your territory. Accept before 20:00 local time.
+            </p>
+            <div class="panel-body" style="overflow:auto">
+              <table class="app">
+                <thead>
+                  <tr><th>Ref</th><th>Device</th><th>City / ZIP</th><th>Quote</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody id="incoming-body">
+                  <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Network directory -->
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Network directory</h2>
+              <span class="text-sm text-muted">All registered coops</span>
+            </div>
+            <div class="panel-body" style="overflow:auto">
+              <table class="app">
+                <thead>
+                  <tr><th>Coop</th><th>Market</th><th>Cities</th><th>Coverage</th><th>Drivers</th></tr>
+                </thead>
+                <tbody id="network-coops-body">
+                  <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--muted)">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         <!-- ECONOMICS VIEW -->
         <section id="view-economics" class="hidden">
           <div style="display:grid;gap:1rem;grid-template-columns:1fr 1fr;max-width:860px">
@@ -303,7 +353,7 @@
                   <button class="btn btn-ghost btn-sm" id="btn-copy-key" type="button">Copy key</button>
                 </div>
               </label>
-              <p class="text-sm text-muted" style="margin-top:1rem">POST to <code>/api/partner/orders</code> with <code>Authorization: Bearer &lt;key&gt;</code></p>
+              <p class="text-sm text-muted" style="margin-top:1rem">POST to <code>/api/orders/partner/orders</code> with <code>Authorization: Bearer &lt;key&gt;</code></p>
             </div>
           </div>
         </section>
@@ -339,8 +389,8 @@
     </div>
   </div>
 
-  <script src="/js/api.js?v=2"></script>
-  <script src="/js/dashboard.js?v=2"></script>
+  <script src="/js/api.js?v=3"></script>
+  <script src="/js/dashboard.js?v=3"></script>
   <script>
     // coop hydration (logo, colors, subtitle)
     (async function hydrate() {
@@ -349,7 +399,7 @@
         if (!res.ok) return;
         const coop = await res.json();
         const name     = coop.name        || 'OddCoop';
-        const color    = coop.color       || '#2d8b8b';
+        const color    = coop.color       || '#01696f';
         const letter   = coop.logo_letter || name[0].toUpperCase();
         const market   = coop.market      || '';
         const corridor = coop.corridor    || '';

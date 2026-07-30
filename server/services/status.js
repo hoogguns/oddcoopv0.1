@@ -57,6 +57,14 @@ const ALLOWED_FROM = {
   cancelled: [],
 };
 
+/**
+ * Determine whether a status transition is permitted for the given actor.
+ *
+ * @param {string} from - Current order status
+ * @param {string} to - Target order status
+ * @param {'partner'|'driver'|'system'} actorType - Who is requesting the transition
+ * @returns {{ ok: boolean, reason?: string, soft?: boolean }}
+ */
 function canTransition(from, to, actorType) {
   if (!STATUSES.includes(to)) {
     return { ok: false, reason: `Unknown status: ${to}` };
@@ -85,6 +93,13 @@ function canTransition(from, to, actorType) {
   };
 }
 
+/**
+ * Build a carrier tracking URL for a given carrier name and tracking number.
+ *
+ * @param {string} carrier - Carrier name (ups, fedex, usps, dhl)
+ * @param {string} number - Tracking number
+ * @returns {string|null} Tracking URL or null if carrier is unrecognized
+ */
 function trackingUrl(carrier, number) {
   if (!number) return null;
   const n = encodeURIComponent(String(number).trim());

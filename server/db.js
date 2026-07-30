@@ -137,9 +137,20 @@ function load() {
   return raw;
 }
 
+/**
+ * Atomically persist data to disk.
+ *
+ * Writes to a sibling `.tmp` file first, then renames it over the target.
+ * This ensures the on-disk file is never left in a half-written state if the
+ * process is killed mid-write (e.g., during a Render redeploy).
+ *
+ * @param {object} data - Full DB state to persist
+ */
 function save(data) {
   ensureDir(DB_PATH);
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+  const tmp = DB_PATH + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+  fs.renameSync(tmp, DB_PATH);
 }
 
 function nowIso() {
@@ -312,8 +323,8 @@ function createDb() {
       const o = data.orders.find((x) => x.id === oId);
       if (!o) return { changes: 0 };
       o.status = status;
-      if (/packed = \?/.test(sql)) { o.packed = params[idx++] ? 1 : 0; o.packed_at = nowIso(); }
-      if (/cancel_reason = \?/.test(sql)) { o.cancel_reason = params[idx++]; }
+      if (/packed = \?/.test(sql)) { o.packed = params[idx] ? 1 : 0; o.packed_at = nowIso(); idx++; }
+      if (/cancel_reason = \?/.test(sql)) { o.cancel_reason = params[idx]; }
       o.updated_at = nowIso();
       persist();
       return { changes: 1 };
