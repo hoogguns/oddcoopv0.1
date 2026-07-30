@@ -1,7 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'oddcoop.json');
+// On Vercel (and other read-only serverless runtimes) the only writable
+// directory is /tmp. Fall back to /tmp/oddcoop.json when DB_PATH is not
+// explicitly set via environment variable. On Render, DB_PATH is set in
+// render.yaml so that path is used instead.
+const DB_PATH = process.env.DB_PATH || (
+  process.env.VERCEL || process.env.VERCEL_ENV
+    ? '/tmp/oddcoop.json'
+    : path.join(__dirname, '..', 'data', 'oddcoop.json')
+);
 
 // ── Schema defaults ──────────────────────────────────────────────────────────
 
@@ -53,32 +61,24 @@ const ORDER_DEFAULTS = () => ({
   dispatch_status: null,
   created_at: null,
   updated_at: null,
-  // ── NEW: cross-coop transaction fields ──
-  // Coop A = buying_coop_id (alias of partner_id, explicit for clarity)
-  // Coop R = pickup_coop_slug / pickup_coop_id (territory owner)
-  buying_coop_id: null,           // partner_id of the purchasing coop (Coop A)
-  pickup_coop_slug: null,         // slug of the territory coop (Coop R)
-  pickup_coop_id: null,           // partner_id of Coop R (resolved from slug)
-  coop_accept_required: 0,        // 1 when cross-coop txn requires Coop R acceptance
-  pickup_coop_accepted_at: null,  // ISO timestamp when Coop R formally accepted
-  // ── NEW: dual-offer pricing ──
-  seller_offer_standard: null,    // full mail-in quote (e.g. $455)
-  seller_offer_sameday: null,     // discounted sameday payout (e.g. $344)
-  seller_chose_sameday: 0,        // 1 if seller opted for sameday
-  payment_method_seller: null,    // 'venmo'|'zelle'|'cashapp'|'ach'|'check'
-  // ── NEW: payment deadline & standing ──
-  payment_deadline_at: null,      // 1hr after inspection_passed_at
-  payment_late_strikes: 0,        // incremented if Coop A misses deadline
-  // ── NEW: IMEI gate ──
-  imei_attempts: 0,               // how many times driver has tried to enter IMEI
-  imei_locked: 0,                 // 1 after 8 failed attempts → order auto-cancelled
-  // ── NEW: driver inspection sign-off ──
-  inspection_passed_at: null,     // when driver submits 'Device Match'
-  driver_signature: null,         // JSON: { name, signed_at, checkboxes[] }
-  // ── NEW: shipping label (Coop A uploads / on-demand from carrier API) ──
-  shipping_label_url: null,       // pre-signed URL or base64 of label PDF
-  shipping_carrier_preference: null, // 'usps'|'ups'|'fedex' (Coop A default)
-  tracking_number_outbound: null, // outbound tracking (distinct from inbound)
+  buying_coop_id: null,
+  pickup_coop_slug: null,
+  pickup_coop_id: null,
+  coop_accept_required: 0,
+  pickup_coop_accepted_at: null,
+  seller_offer_standard: null,
+  seller_offer_sameday: null,
+  seller_chose_sameday: 0,
+  payment_method_seller: null,
+  payment_deadline_at: null,
+  payment_late_strikes: 0,
+  imei_attempts: 0,
+  imei_locked: 0,
+  inspection_passed_at: null,
+  driver_signature: null,
+  shipping_label_url: null,
+  shipping_carrier_preference: null,
+  tracking_number_outbound: null,
 });
 
 const PARTNER_DEFAULTS = () => ({
@@ -93,19 +93,17 @@ const PARTNER_DEFAULTS = () => ({
   plan: 'pilot',
   active: 1,
   created_at: null,
-  // ── NEW: coop standing & enforcement ──
-  coop_standing: 'good',          // 'good'|'probation'|'suspended'
-  late_payment_strikes: 0,        // incremented per missed 1hr payment window
-  probation_at: null,             // ISO timestamp when placed on probation
-  suspended_at: null,             // ISO timestamp when suspended
-  // ── NEW: notification & territory ──
-  notify_url: null,               // webhook URL for cross-coop order pings
-  territory_zip_codes: '[]',      // JSON array of ZIP codes this coop services
+  coop_standing: 'good',
+  late_payment_strikes: 0,
+  probation_at: null,
+  suspended_at: null,
+  notify_url: null,
+  territory_zip_codes: '[]',
 });
 
 const EMPTY = () => ({
   tenants: [],
-  coops: [],                      // registered OddCoop members (dynamic, from /api/coop/register)
+  coops: [],
   partners: [],
   drivers: [],
   orders: [],
@@ -131,21 +129,11 @@ function load() {
     return data;
   }
   const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-  // Back-fill top-level collections added in later migrations
   if (!raw.tenants) raw.tenants = [];
   if (!raw.coops) raw.coops = [];
   return raw;
 }
 
-/**
- * Atomically persist data to disk.
- *
- * Writes to a sibling `.tmp` file first, then renames it over the target.
- * This ensures the on-disk file is never left in a half-written state if the
- * process is killed mid-write (e.g., during a Render redeploy).
- *
- * @param {object} data - Full DB state to persist
- */
 function save(data) {
   ensureDir(DB_PATH);
   const tmp = DB_PATH + '.tmp';
@@ -162,8 +150,7 @@ function matchLike(value, pattern) {
   return String(value ?? '').toLowerCase().includes(raw.toLowerCase());
 }
 
-// ── Migration: back-fill new fields on existing rows ─────────────────────────
-// Called once at startup. Safe to run repeatedly — only fills missing keys.
+// ── Migration ─────────────────────────────────────────────────────────────────
 
 function migrate(data) {
   let dirty = false;
@@ -213,15 +200,11 @@ function createDb() {
     pragma() {},
   };
 
-  // ── execRun ──────────────────────────────────────────────────────────────
-
   function execRun(sql, params) {
-    // Named-param object (single object arg)
     if (params.length === 1 && params[0] && typeof params[0] === 'object' && !Array.isArray(params[0])) {
       return execRunNamed(sql, params[0]);
     }
 
-    // DELETE statements — used by seed --reset
     if (/^DELETE FROM (\w+)/i.test(sql)) {
       const table = sql.match(/^DELETE FROM (\w+)/i)[1].toLowerCase();
       if (data[table]) { data[table] = []; persist(); }
@@ -329,7 +312,6 @@ function createDb() {
       persist();
       return { changes: 1 };
     }
-    // ── Partner standing update ──
     if (/^UPDATE partners SET.*coop_standing/i.test(sql)) {
       const oId = params[params.length - 1];
       const p = data.partners.find((x) => x.id === oId);
@@ -343,8 +325,6 @@ function createDb() {
     }
     throw new Error('Unsupported SQL run: ' + sql.slice(0, 120));
   }
-
-  // ── execRunNamed ─────────────────────────────────────────────────────────
 
   function execRunNamed(sql, obj) {
     if (/INSERT (OR IGNORE )?INTO partners/i.test(sql)) {
@@ -366,7 +346,6 @@ function createDb() {
         created_at: nowIso(),
         updated_at: nowIso(),
         ...obj,
-        // Ensure numeric types
         quoted_amount: Number(obj.quoted_amount || 0),
         seller_offer_standard: obj.seller_offer_standard != null ? Number(obj.seller_offer_standard) : null,
         seller_offer_sameday: obj.seller_offer_sameday != null ? Number(obj.seller_offer_sameday) : null,
@@ -390,12 +369,9 @@ function createDb() {
     throw new Error('Unsupported named SQL: ' + sql.slice(0, 80));
   }
 
-  // ── joinOrder ────────────────────────────────────────────────────────────
-
   function joinOrder(o) {
     const p = data.partners.find((x) => x.id === o.partner_id);
     const d = o.driver_id ? data.drivers.find((x) => x.id === o.driver_id) : null;
-    // Coop R enrichment
     const pickupCoop = o.pickup_coop_id
       ? data.partners.find((x) => x.id === o.pickup_coop_id)
       : null;
@@ -417,15 +393,11 @@ function createDb() {
     };
   }
 
-  // ── execGet ──────────────────────────────────────────────────────────────
-
   function execGet(sql, params) {
-    // COUNT queries
     if (/SELECT COUNT\(\*\) AS c FROM partners/i.test(sql)) return { c: data.partners.length };
     if (/SELECT COUNT\(\*\) AS c FROM orders/i.test(sql))   return { c: data.orders.length };
     if (/SELECT COUNT\(\*\) AS c FROM drivers/i.test(sql))  return { c: data.drivers.length };
 
-    // Partners
     if (/SELECT \* FROM partners WHERE email = \?/i.test(sql)) {
       const want = String(params[0] || '').toLowerCase();
       return data.partners.find((p) => String(p.email || '').toLowerCase() === want) || undefined;
@@ -450,7 +422,6 @@ function createDb() {
       if (!p) return undefined;
       return { id: p.id, company_name: p.company_name, email: p.email, plan: p.plan, active: p.active };
     }
-    // Standing lookup
     if (/SELECT.*coop_standing.*FROM partners WHERE id = \?/i.test(sql)) {
       const p = data.partners.find((x) => x.id === params[0]);
       if (!p) return undefined;
@@ -464,7 +435,6 @@ function createDb() {
       };
     }
 
-    // Drivers
     if (/SELECT \* FROM drivers WHERE email = \?/i.test(sql)) {
       const want = String(params[0] || '').toLowerCase();
       return data.drivers.find((d) => String(d.email || '').toLowerCase() === want) || undefined;
@@ -481,7 +451,6 @@ function createDb() {
       return { id, name, email, phone, vehicle, zones, rating, status, driver_code, trained, created_at };
     }
 
-    // Orders
     if (/FROM orders o[\s\S]*WHERE o\.id = \?/i.test(sql) || /WHERE o\.id = \?/i.test(sql)) {
       const o = data.orders.find((x) => x.id === params[0]);
       return o ? joinOrder(o) : undefined;
@@ -517,8 +486,6 @@ function createDb() {
     return undefined;
   }
 
-  // ── filterOrdersCount ────────────────────────────────────────────────────
-
   function filterOrdersCount(sql, params) {
     let rows = data.orders.slice();
     const hasPartner = /o\.partner_id = \?/.test(sql);
@@ -535,8 +502,6 @@ function createDb() {
     }
     return rows.length;
   }
-
-  // ── execAll ──────────────────────────────────────────────────────────────
 
   function execAll(sql, params) {
     if (/SELECT status, COUNT\(\*\) AS count, COALESCE\(SUM\(quoted_amount\),0\) AS volume\s+FROM orders WHERE partner_id = \? GROUP BY status/i.test(sql)) {
