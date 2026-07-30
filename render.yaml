@@ -1,8 +1,8 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
-# Deploy: Dashboard → New → Blueprint → connect hoogguns/purcheaper
+# Deploy: Dashboard → New → Blueprint → connect hoogguns/oddcoopv0.1
 services:
   - type: web
-    name: purcheaper
+    name: oddcoop
     runtime: node
     plan: free
     region: oregon
@@ -15,7 +15,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: DB_PATH
-        value: /var/data/purcheaper.json
+        value: /var/data/oddcoop.json
       - key: COGS_DRIVER
         value: "20"
       - key: COGS_SUPPLIES
@@ -26,6 +26,6 @@ services:
         value: "3"
     # Persistent disk keeps the JSON DB across deploys (not available on free — use starter+ or accept reset)
     # disk:
-    #   name: purcheaper-data
+    #   name: oddcoop-data
     #   mountPath: /var/data
     #   sizeGB: 1

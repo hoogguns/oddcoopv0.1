@@ -1,8 +1,8 @@
-# PurCheaper as pure SaaS — model & viability
+# OddCoop as pure SaaS — model & viability
 
 ## What we are (MVP)
 
-**PurCheaper is software**, not a courier company — **with first-class integrations** into driver platforms.
+**OddCoop is software**, not a courier company — **with first-class integrations** into driver platforms.
 
 | You provide | Partner owns |
 |-------------|----------------|
@@ -15,7 +15,7 @@
 | API / dashboard / event log | Seller support |
 
 Partners pay a **monthly SaaS subscription**.  
-They do **not** pay PurCheaper a per-package courier fee — platform labor is billed by Roadie/Shipt/etc. under *their* accounts.
+They do **not** pay OddCoop a per-package courier fee — platform labor is billed by Roadie/Shipt/etc. under *their* accounts.
 
 ---
 
@@ -75,7 +75,7 @@ Typical buyback integration:
 | Ops burden | Daily dispatch firefighting | Support + product |
 | Liability | High (custody, theft) | **Low** (partner owns) |
 | Scalability | Linear with drivers | Cloud multi-tenant |
-| Sales story | “We’ll pick up phones” | “Run same-day buyback ops in one system” |
+| Sales story | "We'll pick up phones" | "Run same-day buyback ops in one system" |
 | Competition | Roadie/Uber/UPS | Homegrown spreadsheets + Shopify hacks |
 
 ### What still has to be true
@@ -91,14 +91,14 @@ Typical buyback integration:
 |---------|------------------------------|
 | Fail to get 5 paying partners | Common if no design partners |
 | **$2–10k MRR lifestyle SaaS** | **Plausible** with 10–40 buyback/refurb shops |
-| **$50k+ MRR niche platform** | Possible if you own “same-day buyback OS” category in US |
-| Horizontal “all reverse logistics” giant | Unlikely without heavy capital |
+| **$50k+ MRR niche platform** | Possible if you own "same-day buyback OS" category in US |
+| Horizontal "all reverse logistics" giant | Unlikely without heavy capital |
 
 **Net:** The SaaS pivot **raises** odds of a durable business vs running last-mile yourself, **if** you nail GTM to buyback/refurb operators. It **lowers** the need for dense Wasatch driver networks as a company asset (partners bring drivers wherever they operate).
 
 ### Risks unique to SaaS
 
-- **“Why not build it?”** — answer: dual actor workflows + tracking + pay gate + audit log in weeks, not quarters.
+- **"Why not build it?"** — answer: dual actor workflows + tracking + pay gate + audit log in weeks, not quarters.
 - **Churn** if product is only a status dropdown — must stay sticky via API embedded in their buy flow.
 - **Feature gravity** toward marketplace logistics — resist unless you charge enterprise professional services separately.
 
@@ -106,17 +106,16 @@ Typical buyback integration:
 
 ## Recommended GTM for SaaS MVP
 
-1. **Positioning:** “Same-day buyback operations software — your drivers, your liability, our system of record.”
+1. **Positioning:** "Same-day buyback operations software — your drivers, your liability, our system of record."
 2. **Design partners:** 2–3 online buyback sites; free pilot plan, paid Growth after 30 days.
 3. **Must-have demo path:** create order → driver status → partner status → tracking → paid.
-4. **Ship Render** only after that path is airtight (you’re not on Render yet — good).
+4. **Ship Render** only after that path is airtight.
 5. **North star metric:** weekly active partner accounts with ≥1 API order create.
 
 ---
 
 ## Bottom line
 
-Yes — **this “minor” change is actually a major strategic improvement**:  
-you sell **control-plane software** and stay out of package labor and doorstep liability.
+You sell **control-plane software** and stay out of package labor and doorstep liability.
 
 Success is **more about packaging + distribution to buyback operators** than about hiring drivers in Utah. The Wasatch corridor remains a great *story* and *demo market*, not a required company-owned fleet.

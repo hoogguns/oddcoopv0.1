@@ -1,10 +1,10 @@
-# PurCheaper
+# OddCoop
 
 **Same-day device pickup logistics for online buyback stores.**
 
 Pilot market: **Salt Lake City metro — Wasatch Front (Ogden → Salt Lake City → Provo), Utah.**
 
-PurCheaper connects cell phone / device buyback websites with sellers at home via trained gig-economy drivers. Drivers verify the device against the buyback site's quoted specs, pack it to SOP, and unlock **same-day seller payment** when everything matches — a competitive edge in a crowded mail-in market.
+OddCoop connects cell phone / device buyback websites with sellers at home via trained gig-economy drivers. Drivers verify the device against the buyback site's quoted specs, pack it to SOP, and unlock **same-day seller payment** when everything matches — a competitive edge in a crowded mail-in market.
 
 | Surface | URL (local) | Audience |
 |--------|-------------|----------|
@@ -22,7 +22,7 @@ PurCheaper connects cell phone / device buyback websites with sellers at home vi
 
 - **Buyback sites** need faster cash-to-seller without taking on blind fraud risk.
 - **Sellers** abandon quotes when payout is "7–14 days after we receive the phone."
-- **PurCheaper** inserts doorstep verification + packing so payment can fire the same day **only after a match**.
+- **OddCoop** inserts doorstep verification + packing so payment can fire the same day **only after a match**.
 
 ## Stack
 
@@ -45,8 +45,8 @@ Open http://localhost:3847
 
 | Role | Email | Password |
 |------|-------|----------|
-| Partner | `partner@wasatchbuyback.demo` | `demo1234` |
-| Driver | `sam.driver@purcheaper.demo` | `driver1234` |
+| Partner | `partner@wasatchbuybacks.demo` | `demo1234` |
+| Driver | `sam.driver@oddcoop.demo` | `driver1234` |
 
 Reset demo data:
 
@@ -61,10 +61,10 @@ The repo includes a `render.yaml` Blueprint — Render reads it automatically.
 ### One-time setup
 
 1. Go to **[dashboard.render.com](https://dashboard.render.com)** → sign in with GitHub
-2. Click **New → Blueprint** → select `hoogguns/purcheaper`
+2. Click **New → Blueprint** → select `hoogguns/oddcoopv0.1`
 3. Render detects `render.yaml` and pre-fills all settings
 4. Click **Apply** — build and deploy starts automatically
-5. Live URL: `https://purcheaper.onrender.com`
+5. Live URL: `https://oddcoop.onrender.com`
 
 ### What render.yaml configures automatically
 
@@ -77,7 +77,7 @@ The repo includes a `render.yaml` Blueprint — Render reads it automatically.
 | Health check | `GET /api/health` |
 | `NODE_ENV` | `production` |
 | `JWT_SECRET` | Auto-generated on first deploy |
-| `DB_PATH` | `/var/data/purcheaper.json` |
+| `DB_PATH` | `/var/data/oddcoop.json` |
 
 ### Free plan notes
 
@@ -91,7 +91,7 @@ Uncomment the `disk:` block in `render.yaml` and upgrade to Starter plan:
 
 ```yaml
     disk:
-      name: purcheaper-data
+      name: oddcoop-data
       mountPath: /var/data
       sizeGB: 1
 ```
@@ -99,14 +99,14 @@ Uncomment the `disk:` block in `render.yaml` and upgrade to Starter plan:
 ### Dev → Prod workflow
 
 ```
-Replit (dev)  ──git push──►  GitHub main  ──auto-deploy──►  Render (prod)
+Local (dev)  ──git push──►  GitHub main  ──auto-deploy──►  Render (prod)
 ```
 
 Every merge to `main` triggers a new Render deploy. No manual steps required.
 
 ### Custom domain (optional)
 
-In Render dashboard → your service → **Settings → Custom Domains** → add your domain and point a CNAME to `purcheaper.onrender.com`.
+In Render dashboard → your service → **Settings → Custom Domains** → add your domain and point a CNAME to `oddcoop.onrender.com`.
 
 ---
 
@@ -141,7 +141,7 @@ GET  /api/pricing
 
 Authenticate with `Authorization: Bearer <token>` or `X-API-Key: dl_live_…`.
 
-## How PurCheaper makes money
+## How OddCoop makes money
 
 Partners pay **platform + per completed pickup** (see `/partners#pricing`).  
 Your cost is mainly **driver + pack kit + risk + ops** (~$27 default; override with `COGS_*` env vars).  
@@ -177,10 +177,10 @@ POST /api/leads
 ## Project layout
 
 ```
-PurCheaper/
-  server/           Express API, SQLite, seed
+oddcoopv0.1/
+  server/           Express API, JSON DB, seed
   public/           Marketing + partner + driver UIs
-  data/             SQLite DB (gitignored)
+  data/             JSON DB (gitignored)
   render.yaml       Render Blueprint (production)
   package.json
   README.md
@@ -190,12 +190,12 @@ PurCheaper/
 
 - **State:** Utah  
 - **Corridor:** Ogden · Layton · Bountiful · Salt Lake City · Murray · Sandy · Draper · Lehi · Orem · Provo  
-- **Model:** Gig drivers + PurCheaper buyback training (packing, locks, condition grades)
+- **Model:** Gig drivers + OddCoop buyback training (packing, locks, condition grades)
 - **Q4 expansion:** Las Vegas · Phoenix
 
 ## Repo
 
-https://github.com/hoogguns/purcheaper
+https://github.com/hoogguns/oddcoopv0.1
 
 ## License
 
