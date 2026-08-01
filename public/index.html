@@ -40,11 +40,20 @@
         <a class="btn btn-ghost btn-sm" href="/login">Sign In</a>
         <a class="btn btn-primary btn-sm" href="/partners">Partner with us</a>
       </div>
-      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav">
+      <!-- id="nav-toggle" aligns with site.js getElementById handler -->
+      <button
+        id="nav-toggle"
+        class="nav-toggle"
+        type="button"
+        aria-label="Open menu"
+        aria-expanded="false"
+        aria-controls="nav-panel"
+      >
         <span></span>
       </button>
     </div>
-    <div class="nav-panel" id="mobile-nav">
+    <!-- id="nav-panel" aligns with site.js getElementById handler -->
+    <div class="nav-panel" id="nav-panel">
       <a href="#how">How it Works</a>
       <a href="#partners">For Partners</a>
       <a href="#coverage">Coverage</a>
@@ -205,8 +214,9 @@
           <details><summary>What if the phone doesn't match the quote?</summary><p>Order is flagged <em>mismatch</em>. Payment is held. The partner reviews and decides next steps — no blind same-day payouts.</p></details>
           <details><summary>Can buyback sites integrate via API?</summary><p>Yes. Create orders with JWT or API key the moment a purchase is accepted online. Full status webhooks available in production.</p></details>
         </div>
+        <!-- Form title changed from duplicate "Have questions?" to "Contact operations" -->
         <form class="card stack" id="lead-form">
-          <h3 style="font-size:var(--text-lg)">Have questions?</h3>
+          <h3 style="font-size:var(--text-lg)">Contact operations</h3>
           <p style="color:var(--muted);font-size:var(--text-sm)">Drop us a line and our operations team will get back to you today.</p>
           <div class="form-grid" style="margin-top:var(--space-2)">
             <label class="field full">Name<input name="name" required placeholder="Jane Doe" class="login-input" /></label>
@@ -281,7 +291,8 @@
   <script src="/js/api.js"></script>
   <script src="/js/site.js"></script>
   <script>
-    document.getElementById('y').textContent = new Date().getFullYear();
+    // Landing-page-specific JS only.
+    // Year footer, nav toggle, and theme are all handled by site.js.
 
     // Inject tenant cities into footer + coverage
     API.coverage().then((c) => {
@@ -298,7 +309,10 @@
     API.stats().then((s) => {
       document.getElementById('stat-drivers').textContent = s.trained_drivers ?? '3';
       document.getElementById('stat-partners').textContent = s.active_partner_accounts ?? '—';
-    }).catch(() => { document.getElementById('stat-drivers').textContent = '3'; });
+    }).catch(() => {
+      document.getElementById('stat-drivers').textContent = '3';
+      document.getElementById('stat-partners').textContent = '—';
+    });
 
     document.getElementById('lead-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -308,20 +322,13 @@
       const msg = document.getElementById('lead-msg');
       try {
         const res = await API.lead(body);
-        msg.textContent = res.message || 'Sent — we\'ll be in touch today.';
+        msg.textContent = res.message || "Sent — we'll be in touch today.";
         msg.style.color = 'var(--good)';
         e.target.reset();
       } catch (err) {
         msg.textContent = err.message;
         msg.style.color = 'var(--bad)';
       }
-    });
-
-    const toggle = document.querySelector('.nav-toggle');
-    const panel = document.getElementById('mobile-nav');
-    toggle.addEventListener('click', () => {
-      const open = panel.classList.toggle('open');
-      toggle.setAttribute('aria-expanded', open);
     });
   </script>
 </body>
